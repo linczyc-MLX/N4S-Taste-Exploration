@@ -1,306 +1,373 @@
-// Profile Calculator
-// Transforms user choices into derived taste profile
+/**
+ * Profile Calculator for Quad-Based Ranking System
+ * 
+ * Uses comparative rankings (1st through 4th) to derive:
+ * - Style axes preferences
+ * - Dimension preferences (what varies within quads)
+ * - Complexity calibration
+ * - Material affinities
+ * - Overall taste profile
+ */
 
-export const calculateProfile = ({ phase1Results, phase2Selections, phase3Results, phase2Boards }) => {
-  const { love, ok, notForMe } = phase1Results;
-  
-  // Weight images by preference: love=3, ok=1, notForMe=-1
-  const weightedImages = [
-    ...love.map(img => ({ ...img, weight: 3 })),
-    ...ok.map(img => ({ ...img, weight: 1 })),
-    ...notForMe.map(img => ({ ...img, weight: -1 }))
-  ];
-  
-  // Calculate style axes
-  const styleProfile = calculateStyleAxes(weightedImages);
-  
-  // Calculate complexity profile
-  const complexityProfile = calculateComplexityProfile(weightedImages.filter(img => img.weight > 0));
-  
-  // Extract material affinities
-  const materialProfile = calculateMaterialProfile(love, notForMe);
-  
-  // Determine color preferences
-  const colorProfile = calculateColorProfile(weightedImages.filter(img => img.weight > 0));
-  
-  // Space preferences
-  const spaceProfile = calculateSpaceProfile(weightedImages.filter(img => img.weight > 0));
-  
-  // Calculate confidence scores
-  const confidence = calculateConfidence(weightedImages);
-  
-  // Derive style tags
-  const styleTags = deriveStyleTags(styleProfile);
-  
-  return {
-    style_profile: {
-      ...styleProfile,
-      style_tags: styleTags,
-      confidence
-    },
-    complexity_profile: complexityProfile,
-    material_profile: materialProfile,
-    color_profile: colorProfile,
-    space_profile: spaceProfile,
-    
-    // Raw data for export
-    raw_data: {
-      phase1: {
-        images_shown: love.length + ok.length + notForMe.length,
-        love: love.map(img => img.id),
-        ok: ok.map(img => img.id),
-        notForMe: notForMe.map(img => img.id)
-      },
-      phase2: phase2Selections,
-      phase3: phase3Results
-    }
-  };
+// Weight multipliers for rankings
+const RANK_WEIGHTS = {
+  1: 4.0,  // 1st choice gets highest weight
+  2: 2.5,  // 2nd choice
+  3: 1.0,  // 3rd choice
+  4: 0.25  // 4th choice (slight negative signal)
 };
 
-// Calculate weighted average for style axes
-const calculateStyleAxes = (weightedImages) => {
-  const axes = {
-    contemporary_traditional: 0,
-    minimal_layered: 0,
-    warm_cool: 0,
-    organic_geometric: 0,
-    refined_eclectic: 0
-  };
-  
+/**
+ * Calculate weighted average for a dimension based on rankings
+ */
+const calculateWeightedDimension = (quadResults, dimensionKey) => {
+  let weightedSum = 0;
   let totalWeight = 0;
   
-  weightedImages.forEach(img => {
-    if (img.weight > 0 && img.style_axes) {
-      Object.keys(axes).forEach(axis => {
-        axes[axis] += (img.style_axes[axis] || 5) * img.weight;
-      });
-      totalWeight += img.weight;
-    }
-  });
-  
-  if (totalWeight > 0) {
-    Object.keys(axes).forEach(axis => {
-      axes[axis] = Math.round((axes[axis] / totalWeight) * 10) / 10;
+  quadResults.forEach(result => {
+    result.images.forEach(image => {
+      const rank = result.rankings[image.id];
+      if (rank && image.style_axes && image.style_axes[dimensionKey] !== undefined) {
+        const weight = RANK_WEIGHTS[rank];
+        weightedSum += image.style_axes[dimensionKey] * weight;
+        totalWeight += weight;
+      }
     });
-  }
+  });
   
-  return axes;
+  return totalWeight > 0 ? weightedSum / totalWeight : 5;
 };
 
-// Calculate complexity preferences (Berlyne)
-const calculateComplexityProfile = (positiveImages) => {
-  if (positiveImages.length === 0) {
-    return {
-      optimal_complexity: 5,
-      complexity_range: [3, 7],
-      complexity_consistency: 0.5,
-      novelty_tolerance: 5,
-      coherence_preference: 7
-    };
-  }
+/**
+ * Analyze variation dimension preferences
+ * When a quad varies on "door_treatment", what end of the spectrum does client prefer?
+ */
+const analyzeVariationPreferences = (quadResults) => {
+  const preferences = {};
   
-  const complexities = positiveImages
-    .filter(img => img.psychological)
-    .map(img => img.psychological.complexity || 5);
-  
-  const novelties = positiveImages
-    .filter(img => img.psychological)
-    .map(img => img.psychological.novelty || 5);
+  quadResults.forEach(result => {
+    const dimension = result.variationDimension;
     
-  const coherences = positiveImages
-    .filter(img => img.psychological)
-    .map(img => img.psychological.coherence || 7);
-  
-  const avgComplexity = complexities.reduce((a, b) => a + b, 0) / complexities.length;
-  const minComplexity = Math.min(...complexities);
-  const maxComplexity = Math.max(...complexities);
-  
-  // Calculate consistency (lower std dev = higher consistency)
-  const variance = complexities.reduce((sum, c) => sum + Math.pow(c - avgComplexity, 2), 0) / complexities.length;
-  const stdDev = Math.sqrt(variance);
-  const consistency = Math.max(0, Math.min(1, 1 - (stdDev / 5)));
-  
-  return {
-    optimal_complexity: Math.round(avgComplexity * 10) / 10,
-    complexity_range: [
-      Math.round(Math.max(1, avgComplexity - stdDev) * 10) / 10,
-      Math.round(Math.min(10, avgComplexity + stdDev) * 10) / 10
-    ],
-    complexity_consistency: Math.round(consistency * 100) / 100,
-    novelty_tolerance: Math.round((novelties.reduce((a, b) => a + b, 0) / novelties.length) * 10) / 10,
-    coherence_preference: Math.round((coherences.reduce((a, b) => a + b, 0) / coherences.length) * 10) / 10
-  };
-};
-
-// Extract material preferences
-const calculateMaterialProfile = (loved, disliked) => {
-  const materialCounts = {};
-  const aversionCounts = {};
-  
-  loved.forEach(img => {
-    if (img.physical && img.physical.primary_materials) {
-      img.physical.primary_materials.forEach(mat => {
-        materialCounts[mat] = (materialCounts[mat] || 0) + 1;
-      });
+    if (!preferences[dimension]) {
+      preferences[dimension] = {
+        dimension,
+        samples: [],
+        preferredEnd: null,
+        strength: 0
+      };
     }
-  });
-  
-  disliked.forEach(img => {
-    if (img.physical && img.physical.primary_materials) {
-      img.physical.primary_materials.forEach(mat => {
-        aversionCounts[mat] = (aversionCounts[mat] || 0) + 1;
-      });
-    }
-  });
-  
-  // Sort by frequency
-  const sortedAffinities = Object.entries(materialCounts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([mat]) => mat);
     
-  const sortedAversions = Object.entries(aversionCounts)
-    .filter(([mat]) => !materialCounts[mat] || aversionCounts[mat] > materialCounts[mat])
-    .sort((a, b) => b[1] - a[1])
-    .map(([mat]) => mat);
-  
-  return {
-    primary_affinities: sortedAffinities.slice(0, 5),
-    secondary_affinities: sortedAffinities.slice(5, 10),
-    aversions: sortedAversions.slice(0, 5)
-  };
-};
-
-// Determine color palette preferences
-const calculateColorProfile = (positiveImages) => {
-  const paletteCounts = {};
-  let totalWarmCool = 0;
-  
-  positiveImages.forEach(img => {
-    if (img.physical && img.physical.color_palette) {
-      paletteCounts[img.physical.color_palette] = (paletteCounts[img.physical.color_palette] || 0) + 1;
-    }
-    if (img.style_axes) {
-      totalWarmCool += img.style_axes.warm_cool || 5;
-    }
+    // Find 1st and 4th choice values
+    result.images.forEach(image => {
+      const rank = result.rankings[image.id];
+      if (rank === 1 || rank === 4) {
+        preferences[dimension].samples.push({
+          rank,
+          value: image.variationValue,
+          label: image.variationLabel
+        });
+      }
+    });
   });
   
-  const primaryPalette = Object.entries(paletteCounts)
-    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'warm_neutral';
-  
-  const avgWarmCool = positiveImages.length > 0 
-    ? totalWarmCool / positiveImages.length 
-    : 5;
-  
-  return {
-    primary_palette: primaryPalette,
-    accent_tolerance: avgWarmCool < 4 ? 'warm_accents' : avgWarmCool > 6 ? 'cool_accents' : 'neutral',
-    color_temperature: Math.round(avgWarmCool * 10) / 10,
-    saturation_preference: 'muted' // Default for ultra-luxury
-  };
-};
-
-// Calculate space preferences
-const calculateSpaceProfile = (positiveImages) => {
-  const scales = { intimate: 0, comfortable: 0, generous: 0, grand: 0, monumental: 0 };
-  let totalLight = 0;
-  
-  positiveImages.forEach(img => {
-    if (img.physical) {
-      const scale = img.physical.scale_feeling || 'generous';
-      scales[scale] = (scales[scale] || 0) + 1;
-      totalLight += img.physical.natural_light || 7;
-    }
-  });
-  
-  const preferredScale = Object.entries(scales)
-    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'generous';
-  
-  return {
-    scale_comfort: preferredScale,
-    natural_light_importance: Math.round((totalLight / Math.max(1, positiveImages.length)) * 10) / 10,
-    openness: 7 // Would need specific data to calculate
-  };
-};
-
-// Calculate confidence scores based on consistency
-const calculateConfidence = (weightedImages) => {
-  const positive = weightedImages.filter(img => img.weight > 0);
-  
-  if (positive.length < 5) {
-    return {
-      contemporary_traditional: 0.5,
-      minimal_layered: 0.5,
-      warm_cool: 0.5,
-      organic_geometric: 0.5,
-      refined_eclectic: 0.5
-    };
-  }
-  
-  const confidence = {};
-  const axes = ['contemporary_traditional', 'minimal_layered', 'warm_cool', 'organic_geometric', 'refined_eclectic'];
-  
-  axes.forEach(axis => {
-    const values = positive
-      .filter(img => img.style_axes)
-      .map(img => img.style_axes[axis] || 5);
+  // Analyze each dimension
+  Object.keys(preferences).forEach(dim => {
+    const pref = preferences[dim];
+    const firstChoices = pref.samples.filter(s => s.rank === 1);
+    const lastChoices = pref.samples.filter(s => s.rank === 4);
     
-    if (values.length > 0) {
-      const avg = values.reduce((a, b) => a + b, 0) / values.length;
-      const variance = values.reduce((sum, v) => sum + Math.pow(v - avg, 2), 0) / values.length;
-      const stdDev = Math.sqrt(variance);
-      confidence[axis] = Math.round(Math.max(0.3, Math.min(1, 1 - (stdDev / 4))) * 100) / 100;
-    } else {
-      confidence[axis] = 0.5;
+    if (firstChoices.length > 0 && lastChoices.length > 0) {
+      const avgFirst = firstChoices.reduce((sum, s) => sum + s.value, 0) / firstChoices.length;
+      const avgLast = lastChoices.reduce((sum, s) => sum + s.value, 0) / lastChoices.length;
+      
+      pref.preferredEnd = avgFirst < avgLast ? 'low' : 'high';
+      pref.strength = Math.abs(avgFirst - avgLast) / 10; // Normalize to 0-1
+      pref.averagePreferred = avgFirst;
     }
   });
   
-  return confidence;
+  return preferences;
 };
 
-// Derive style tags from axes
-const deriveStyleTags = (styleAxes) => {
+/**
+ * Extract material preferences from rankings
+ */
+const analyzeMaterialPreferences = (quadResults) => {
+  const materialScores = {};
+  
+  quadResults.forEach(result => {
+    result.images.forEach(image => {
+      const rank = result.rankings[image.id];
+      const weight = RANK_WEIGHTS[rank] || 0;
+      
+      if (image.physical && image.physical.primary_materials) {
+        image.physical.primary_materials.forEach(material => {
+          if (!materialScores[material]) {
+            materialScores[material] = { total: 0, count: 0 };
+          }
+          materialScores[material].total += weight;
+          materialScores[material].count += 1;
+        });
+      }
+    });
+  });
+  
+  // Calculate average scores
+  const materials = Object.entries(materialScores)
+    .map(([material, data]) => ({
+      material,
+      score: data.total / data.count,
+      frequency: data.count
+    }))
+    .sort((a, b) => b.score - a.score);
+  
+  return {
+    primary: materials.filter(m => m.score > 2.5).slice(0, 5),
+    secondary: materials.filter(m => m.score >= 1.5 && m.score <= 2.5).slice(0, 5),
+    aversions: materials.filter(m => m.score < 1.0).slice(0, 3)
+  };
+};
+
+/**
+ * Analyze complexity preferences from psychological attributes
+ */
+const analyzeComplexityPreference = (quadResults) => {
+  let complexitySum = 0;
+  let totalWeight = 0;
+  const complexityValues = [];
+  
+  quadResults.forEach(result => {
+    result.images.forEach(image => {
+      const rank = result.rankings[image.id];
+      const weight = RANK_WEIGHTS[rank] || 0;
+      
+      const complexity = image.psychological?.complexity || 
+                         image.physical?.ornamentation_level || 
+                         5;
+      
+      if (rank === 1 || rank === 2) {
+        complexityValues.push(complexity);
+      }
+      
+      complexitySum += complexity * weight;
+      totalWeight += weight;
+    });
+  });
+  
+  const optimalComplexity = totalWeight > 0 ? complexitySum / totalWeight : 5;
+  
+  // Calculate consistency (how tight is their preference?)
+  const variance = complexityValues.length > 0 
+    ? complexityValues.reduce((sum, v) => sum + Math.pow(v - optimalComplexity, 2), 0) / complexityValues.length
+    : 0;
+  
+  return {
+    optimal: Math.round(optimalComplexity * 10) / 10,
+    range: {
+      min: Math.max(1, Math.round((optimalComplexity - Math.sqrt(variance)) * 10) / 10),
+      max: Math.min(10, Math.round((optimalComplexity + Math.sqrt(variance)) * 10) / 10)
+    },
+    consistency: Math.max(0, 1 - (Math.sqrt(variance) / 5)) // 0-1 scale
+  };
+};
+
+/**
+ * Integrate Phase 3 resolution choices
+ */
+const integratePhase3 = (phase3Results, baseProfile) => {
+  const adjustments = {};
+  
+  phase3Results.forEach(result => {
+    const { dimension, choice } = result;
+    
+    switch(dimension) {
+      case 'warmth':
+        adjustments.warm_cool = choice === 'A' ? 
+          Math.min(baseProfile.styleAxes.warm_cool.value + 1, 10) : 
+          Math.max(baseProfile.styleAxes.warm_cool.value - 1, 1);
+        break;
+      case 'complexity':
+        adjustments.minimal_layered = choice === 'A' ?
+          Math.max(baseProfile.styleAxes.minimal_layered.value - 1, 1) :
+          Math.min(baseProfile.styleAxes.minimal_layered.value + 1, 10);
+        break;
+      case 'period':
+        adjustments.contemporary_traditional = choice === 'A' ?
+          Math.max(baseProfile.styleAxes.contemporary_traditional.value - 1, 1) :
+          Math.min(baseProfile.styleAxes.contemporary_traditional.value + 1, 10);
+        break;
+      case 'formality':
+        adjustments.formality = choice === 'B' ? 'formal' : 'casual';
+        break;
+      case 'nature':
+        adjustments.organic_geometric = choice === 'B' ?
+          Math.max(baseProfile.styleAxes.organic_geometric.value - 1, 1) :
+          Math.min(baseProfile.styleAxes.organic_geometric.value + 1, 10);
+        break;
+      case 'ornamentation':
+        adjustments.ornamentation_preference = choice === 'B' ? 'decorative' : 'restrained';
+        break;
+    }
+  });
+  
+  return adjustments;
+};
+
+/**
+ * Generate style tags from profile
+ */
+const generateStyleTags = (profile) => {
   const tags = [];
   
-  // Contemporary vs Traditional
-  if (styleAxes.contemporary_traditional < 3) {
-    tags.push('ultra_contemporary');
-  } else if (styleAxes.contemporary_traditional < 5) {
+  // Period tags
+  if (profile.styleAxes.contemporary_traditional.value <= 3) {
     tags.push('contemporary');
-  } else if (styleAxes.contemporary_traditional > 7) {
+  } else if (profile.styleAxes.contemporary_traditional.value >= 7) {
     tags.push('traditional');
   } else {
     tags.push('transitional');
   }
   
-  // Minimal vs Layered
-  if (styleAxes.minimal_layered < 4) {
+  // Complexity tags
+  if (profile.styleAxes.minimal_layered.value <= 3) {
     tags.push('minimal');
-  } else if (styleAxes.minimal_layered > 6) {
+  } else if (profile.styleAxes.minimal_layered.value >= 7) {
     tags.push('layered');
   }
   
-  // Warm vs Cool
-  if (styleAxes.warm_cool < 4) {
+  // Temperature tags
+  if (profile.styleAxes.warm_cool.value <= 3) {
     tags.push('warm_palette');
-  } else if (styleAxes.warm_cool > 6) {
+  } else if (profile.styleAxes.warm_cool.value >= 7) {
     tags.push('cool_palette');
   }
   
-  // Organic vs Geometric
-  if (styleAxes.organic_geometric < 4) {
-    tags.push('organic_forms');
-  } else if (styleAxes.organic_geometric > 6) {
+  // Organic/geometric
+  if (profile.styleAxes.organic_geometric.value <= 3) {
+    tags.push('organic');
+  } else if (profile.styleAxes.organic_geometric.value >= 7) {
     tags.push('geometric');
   }
   
-  // Refined vs Eclectic
-  if (styleAxes.refined_eclectic < 4) {
-    tags.push('highly_curated');
-  } else if (styleAxes.refined_eclectic > 6) {
-    tags.push('eclectic');
+  return tags;
+};
+
+/**
+ * Main profile calculation function
+ */
+export const calculateProfile = (phase1Results, phase2Selections, phase3Results, phase2Boards) => {
+  // 1. Calculate style axes from quad rankings
+  const styleAxes = {
+    contemporary_traditional: {
+      value: calculateWeightedDimension(phase1Results, 'contemporary_traditional'),
+      confidence: 0.8,
+      label: 'Period Preference'
+    },
+    minimal_layered: {
+      value: calculateWeightedDimension(phase1Results, 'minimal_layered'),
+      confidence: 0.8,
+      label: 'Complexity Preference'
+    },
+    warm_cool: {
+      value: calculateWeightedDimension(phase1Results, 'warm_cool'),
+      confidence: 0.8,
+      label: 'Temperature Preference'
+    },
+    organic_geometric: {
+      value: calculateWeightedDimension(phase1Results, 'organic_geometric'),
+      confidence: 0.7,
+      label: 'Form Preference'
+    },
+    refined_eclectic: {
+      value: calculateWeightedDimension(phase1Results, 'refined_eclectic'),
+      confidence: 0.6,
+      label: 'Curatedness'
+    }
+  };
+  
+  // Round values
+  Object.keys(styleAxes).forEach(key => {
+    styleAxes[key].value = Math.round(styleAxes[key].value * 10) / 10;
+  });
+  
+  // 2. Analyze variation preferences (what they prefer within quads)
+  const variationPreferences = analyzeVariationPreferences(phase1Results);
+  
+  // 3. Analyze material preferences
+  const materialProfile = analyzeMaterialPreferences(phase1Results);
+  
+  // 4. Analyze complexity calibration
+  const complexityProfile = analyzeComplexityPreference(phase1Results);
+  
+  // 5. Build base profile
+  const baseProfile = {
+    styleAxes,
+    variationPreferences,
+    materialProfile,
+    complexityProfile
+  };
+  
+  // 6. Integrate Phase 3 resolutions
+  const phase3Adjustments = integratePhase3(phase3Results, baseProfile);
+  
+  // Apply adjustments
+  if (phase3Adjustments.warm_cool) {
+    styleAxes.warm_cool.value = phase3Adjustments.warm_cool;
+    styleAxes.warm_cool.confidence = 0.95;
+  }
+  if (phase3Adjustments.minimal_layered) {
+    styleAxes.minimal_layered.value = phase3Adjustments.minimal_layered;
+    styleAxes.minimal_layered.confidence = 0.95;
+  }
+  if (phase3Adjustments.contemporary_traditional) {
+    styleAxes.contemporary_traditional.value = phase3Adjustments.contemporary_traditional;
+    styleAxes.contemporary_traditional.confidence = 0.95;
+  }
+  if (phase3Adjustments.organic_geometric) {
+    styleAxes.organic_geometric.value = phase3Adjustments.organic_geometric;
+    styleAxes.organic_geometric.confidence = 0.9;
   }
   
-  return tags;
+  // 7. Generate final profile
+  const finalProfile = {
+    // Identification
+    generatedAt: new Date().toISOString(),
+    methodology: 'quad_ranking_v1',
+    
+    // Style Axes
+    styleAxes,
+    
+    // Style Tags
+    styleTags: generateStyleTags({ styleAxes }),
+    
+    // Complexity Calibration
+    complexity: complexityProfile,
+    
+    // Material Preferences
+    materials: materialProfile,
+    
+    // Detailed Variation Preferences
+    variationPreferences: Object.values(variationPreferences).filter(v => v.strength > 0.2),
+    
+    // Phase 3 Resolutions
+    resolutions: phase3Results,
+    
+    // Additional attributes
+    formality: phase3Adjustments.formality || 'moderate',
+    ornamentation: phase3Adjustments.ornamentation_preference || 'balanced',
+    
+    // Quad count for confidence
+    sampleSize: phase1Results.length,
+    
+    // Raw data for export
+    rawData: {
+      phase1Results,
+      phase2Selections,
+      phase3Results
+    }
+  };
+  
+  return finalProfile;
 };
 
 export default calculateProfile;

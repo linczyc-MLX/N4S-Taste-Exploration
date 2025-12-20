@@ -57,7 +57,7 @@ const PhaseTwo = () => {
             <button
               key={image.id}
               className={`board-grid__item ${isSelected ? 'board-grid__item--selected' : ''}`}
-              onClick={() => togglePhase2Selection(currentBoard.id, image.id)}
+              onClick={() => togglePhase2Selection(image.id)}
             >
               <div 
                 className="board-grid__image"
@@ -65,7 +65,7 @@ const PhaseTwo = () => {
               >
                 {/* Placeholder label */}
                 <div className="board-grid__label">
-                  <span>{image.subcategory?.replace('_', ' ')}</span>
+                  <span>{image.variationLabel || image.subcategory?.replace('_', ' ')}</span>
                 </div>
               </div>
               

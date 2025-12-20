@@ -76,7 +76,7 @@ const categoryInfo = {
   }
 };
 
-const DividerCard = ({ category, categoryIndex, totalCategories, onContinue }) => {
+const DividerCard = ({ category, categoryIndex, totalCategories, quadCount, onContinue }) => {
   const info = categoryInfo[category];
   
   if (!info) return null;
@@ -111,13 +111,21 @@ const DividerCard = ({ category, categoryIndex, totalCategories, onContinue }) =
         <h2 className="divider-card__title">{info.title}</h2>
         <p className="divider-card__description">{info.description}</p>
         
+        {/* Quad count indicator */}
+        {quadCount && (
+          <div className="divider-card__quad-count">
+            {quadCount} comparison{quadCount !== 1 ? 's' : ''} in this category
+          </div>
+        )}
+        
         {/* Instructions */}
         <div className="divider-card__instructions">
-          <p>React instinctively to each image:</p>
+          <p>You'll see 4 images at a time. Rank them by tapping in order of preference:</p>
           <div className="divider-card__actions-preview">
-            <span className="action-preview action-preview--love">❤️ Love</span>
-            <span className="action-preview action-preview--ok">👍 OK</span>
-            <span className="action-preview action-preview--not">✕ Not for me</span>
+            <span className="action-preview action-preview--first">1st</span>
+            <span className="action-preview action-preview--second">2nd</span>
+            <span className="action-preview action-preview--third">3rd</span>
+            <span className="action-preview action-preview--fourth">4th</span>
           </div>
         </div>
         

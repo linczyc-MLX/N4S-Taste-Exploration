@@ -6,39 +6,103 @@
 
 ## Overview
 
-A client-facing visual preference elicitation module for the N4S ultra-luxury residential advisory platform. Uses image-based methodology to derive aesthetic profiles without requiring clients to articulate preferences verbally.
+A client-facing visual preference elicitation module for the N4S ultra-luxury residential advisory platform. Uses **comparative ranking methodology** with image quads to derive nuanced aesthetic profiles without requiring clients to articulate preferences verbally.
+
+## Key Innovation: Quad-Based Ranking
+
+Instead of swiping individual images (love/ok/not), clients **rank 4 images at a time**. Each quad shows 4 variations on a theme - for example, 4 different entry door treatments ranging from minimal to grand.
+
+**Why this is better:**
+- **Comparative judgment** is more reliable than absolute judgment
+- **Captures nuance** - within "contemporary entry doors," do they prefer minimal or statement?
+- **More data per interaction** - one quad = ranking of 4 images
+- **Faster completion** - 36 quads vs 144 individual swipes
+- **Richer insights** - we know what they prefer *within* each variation dimension
 
 ## Three-Phase Methodology
 
-### Phase 1: Discovery (Swipe)
-- **Divider cards** introduce each category before images appear
-- 60 images presented in category order (not random)
-- Client swipes: **Love** (right), **OK** (up), **Not for me** (left)
-- Fast, intuitive, gut-reaction based
-- Keyboard shortcuts: Arrow keys
+### Phase 1: Comparative Ranking (Quads)
+- 36 quads presented (144 images total)
+- Each quad = 4 variations on a theme
+- Client taps images in order of preference (1st through 4th)
+- Organized by category with divider cards between sections
 
-**Category Order (with dividers):**
-1. Exterior Architecture
-2. Living Spaces
-3. Dining Spaces
-4. Kitchens
-5. Family Areas
-6. Primary Bedrooms
-7. Primary Bathrooms
-8. Guest Bedrooms
-9. Exterior Landscape
-10. Outdoor Living
+**Categories (in client journey order):**
+1. Exterior Architecture (6 quads)
+2. Living Spaces (6 quads)
+3. Dining Spaces (4 quads)
+4. Kitchens (4 quads)
+5. Family Areas (3 quads)
+6. Primary Bedrooms (3 quads)
+7. Primary Bathrooms (3 quads)
+8. Guest Bedrooms (2 quads)
+9. Exterior Landscape (4 quads)
+10. Outdoor Living (3 quads)
+
+**Variation Dimensions Captured:**
+- material_warmth
+- door_treatment
+- formality_level
+- ornamentation
+- complexity
+- glazing_ratio
+- layering
+- warmth
+- period_influence
+- natural_influence
+- regional_intensity
+- cabinet_style
+- comfort_level
+- luxury_level
+- spa_intensity
+- minimalism
+- pool_style
+- enclosure
+- indoor_outdoor_connection
 
 ### Phase 2: Refinement (Board Selection)
-- 4 curated boards generated from Phase 1 results
-- Each board contains 9-12 images
+- 4 curated boards generated from top-ranked images
 - Client selects top 3 from each board
-- Forces prioritization
+- Forces prioritization among favorites
 
 ### Phase 3: Resolution (Binary Choice)
 - 6 "This or That" pairs
-- Resolves detected contradictions
-- Quick instinct decisions
+- Resolves detected preference tensions:
+  - Warmth (Cool vs Warm)
+  - Complexity (Minimal vs Layered)
+  - Period (Contemporary vs Traditional)
+  - Formality (Casual vs Formal)
+  - Nature (Architectural vs Organic)
+  - Ornamentation (Restrained vs Decorative)
+
+## Profile Output
+
+The generated profile includes:
+
+### Style Axes (5 dimensions, 1-10 scale)
+- Contemporary ↔ Traditional
+- Minimal ↔ Layered
+- Warm ↔ Cool
+- Organic ↔ Geometric
+- Refined ↔ Eclectic
+
+Each with confidence score based on ranking consistency.
+
+### Variation Preferences
+Unique insight from quad comparisons - shows which end of each variation dimension client prefers (e.g., "door_treatment: prefers minimal, 78% strength").
+
+### Complexity Calibration
+- Optimal complexity level
+- Acceptable range
+- Consistency score
+
+### Material Affinities
+- Primary affinities (strongly preferred)
+- Secondary affinities (also liked)
+- Aversions (consistently ranked low)
+
+### Style Tags
+Auto-derived labels: "contemporary", "warm_palette", "minimal", etc.
 
 ## Divider Cards
 
@@ -46,148 +110,86 @@ Before each category, a full-screen divider card appears showing:
 - Category icon and title
 - Description of what they'll be evaluating
 - Progress indicator (Category X of 10)
-- Reminder of the swipe actions
+- Number of quads in the category
+- Reminder of the ranking interaction
 - "Begin [Category]" button
 
-This orients the client and creates natural pauses in the experience.
-
-## Derived Profile Output
-
-The app calculates and exports:
-
-1. **Style Profile**
-   - 5 axes: Contemporary↔Traditional, Minimal↔Layered, Warm↔Cool, Organic↔Geometric, Refined↔Eclectic
-   - Confidence scores per axis
-   - Derived style tags
-
-2. **Complexity Profile** (Berlyne)
-   - Optimal complexity level
-   - Acceptable complexity range
-   - Coherence preference
-
-3. **Material Affinities**
-   - Primary affinities (drawn to)
-   - Secondary affinities
-   - Aversions (less drawn to)
-
-4. **Color Profile**
-   - Primary palette
-   - Color temperature
-   - Accent tolerance
-
-## Session Modes
-
-- **Together**: Couple completing collaboratively
-- **Principal**: Primary decision-maker independently
-- **Secondary**: Co-decision-maker independently
-
-## Technology
+## Technical Stack
 
 - React 18
 - Context API for state management
-- CSS with CSS Variables for theming
-- Mobile-responsive design
-- Keyboard navigation support
+- Lucide React icons
+- CSS custom properties
+- Mobile-first responsive design
 
-## Deployment to IONOS
+## Deployment (IONOS Deploy Now)
 
-### Create New Repository
-1. Create new GitHub repo: `N4S-Taste-Exploration`
-2. Upload contents of `taste-exploration` folder to root
-
-### IONOS Deploy Now Settings
-| Setting | Value |
-|---------|-------|
-| Command 1 | `npm install` |
-| Command 2 | `CI=false npm run build` |
-| Output path | `build` |
-| Workflow | Do not prefill workflow |
-
-## Current Status
-
-**✅ Complete:**
-- Welcome screen with mode selection
-- Phase 1: Swipe interface with animations
-- Phase 2: Board selection grid
-- Phase 3: Binary choice interface
-- Completion: Profile visualization and export
-- Progress tracking throughout
-- Keyboard navigation
-- Mobile responsive
-
-**🔲 Pending:**
-- Replace placeholder images with AI-generated library
-- Integration with Master FYI module
-- Multi-stakeholder divergence report
-
-## Placeholder Images
-
-Currently uses gradient backgrounds with style labels. Each "image" carries full metadata for profile calculation:
-
-- Style axes (5 dimensions)
-- Psychological dimensions (Berlyne & Coburn)
-- Materials
-- Color palette
-- Regional influence
-- Budget tier
-
-Once AI images are generated, simply update the `placeholderImages.js` file with actual image URLs.
+1. Push to GitHub repository
+2. IONOS auto-deploys with these settings:
+   - Build commands: `npm install` then `CI=false npm run build`
+   - Output directory: `build`
 
 ## File Structure
 
 ```
-taste-exploration/
-├── public/
-│   └── index.html
-├── src/
-│   ├── App.jsx
-│   ├── index.js
-│   ├── components/
-│   │   ├── Welcome/
-│   │   ├── PhaseOne/       (Swipe)
-│   │   ├── PhaseTwo/       (Board Selection)
-│   │   ├── PhaseThree/     (Binary Choice)
-│   │   ├── Completion/     (Profile Display)
-│   │   └── shared/
-│   ├── contexts/
-│   │   └── TasteContext.jsx
-│   ├── data/
-│   │   └── placeholderImages.js
-│   ├── utils/
-│   │   └── profileCalculator.js
-│   └── styles/
-│       └── index.css
-└── package.json
+src/
+├── components/
+│   ├── Welcome/
+│   ├── PhaseOne/         # Quad ranking + dividers
+│   ├── PhaseTwo/         # Board selection
+│   ├── PhaseThree/       # Binary choice
+│   ├── Completion/       # Profile display
+│   └── shared/
+│       ├── DividerCard.jsx
+│       ├── QuadCard.jsx  # The 4-image ranking component
+│       └── ProgressIndicator.jsx
+├── contexts/
+│   └── TasteContext.jsx  # State management
+├── data/
+│   └── quadImages.js     # Image quads with metadata
+├── utils/
+│   └── profileCalculator.js  # Ranking → profile algorithm
+└── styles/
+    └── index.css
 ```
 
-## Export Format
+## Keyboard Shortcuts
 
-Profile data can be exported as JSON for integration with Master FYI:
+- **Enter/Space** - Continue past divider cards
+- Images are tapped (no keyboard shortcuts for ranking)
 
-```json
-{
-  "style_profile": {
-    "contemporary_traditional": 6.4,
-    "minimal_layered": 3.8,
-    "style_tags": ["contemporary", "minimal", "warm_palette"],
-    "confidence": { ... }
-  },
-  "complexity_profile": { ... },
-  "material_profile": { ... },
-  "color_profile": { ... },
-  "sessionMetadata": {
-    "completedAt": "2025-12-20T...",
-    "mode": "principal",
-    "durationMinutes": 18
-  },
-  "raw_data": {
-    "phase1": { "love": [...], "ok": [...], "notForMe": [...] },
-    "phase2": { ... },
-    "phase3": { ... }
-  }
-}
+## Data Flow
+
 ```
+Quad Rankings → Weighted Analysis → Style Axes
+                                  → Variation Preferences
+                                  → Material Affinities
+                                  → Complexity Profile
+                          ↓
+Phase 2 Selections → Priority Refinement
+                          ↓
+Phase 3 Choices → Tension Resolution
+                          ↓
+                   Final Profile (JSON export)
+```
+
+## Ranking Weight Algorithm
+
+```javascript
+const RANK_WEIGHTS = {
+  1: 4.0,   // 1st choice - strong positive signal
+  2: 2.5,   // 2nd choice - positive signal
+  3: 1.0,   // 3rd choice - neutral
+  4: 0.25   // 4th choice - slight negative signal
+};
+```
+
+## Next Steps
+
+- P1.C.2: Generate 144 AI images (36 quads × 4 images)
+- P2.C.1: Integrate with FYI architect matching
+- P2.C.2: Multi-stakeholder divergence reporting
 
 ---
 
-*N4S - Not4Sale | Ultra-Luxury Residential Advisory Platform*
+*N4S Taste Exploration v4.0 - Quad Ranking Edition*

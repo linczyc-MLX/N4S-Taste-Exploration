@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTaste } from '../../contexts/TasteContext';
-import { CheckCircle, Download, RotateCcw, Share2 } from 'lucide-react';
+import { CheckCircle, Download, RotateCcw, TrendingUp, Layers } from 'lucide-react';
 
 const Completion = () => {
   const { derivedProfile, resetExploration } = useTaste();
@@ -9,7 +9,7 @@ const Completion = () => {
     return <div className="completion__loading">Calculating your profile...</div>;
   }
   
-  const { style_profile, complexity_profile, material_profile, color_profile } = derivedProfile;
+  const { styleAxes, styleTags, complexity, materials, variationPreferences, sampleSize } = derivedProfile;
   
   // Format axis value to descriptive text
   const getAxisDescription = (axis, value) => {
@@ -21,6 +21,18 @@ const Completion = () => {
       refined_eclectic: value < 4 ? 'Refined' : value > 6 ? 'Eclectic' : 'Curated'
     };
     return descriptions[axis] || 'Balanced';
+  };
+  
+  // Get axis display names
+  const getAxisDisplayName = (axis) => {
+    const names = {
+      contemporary_traditional: ['Contemporary', 'Traditional'],
+      minimal_layered: ['Minimal', 'Layered'],
+      warm_cool: ['Warm', 'Cool'],
+      organic_geometric: ['Organic', 'Geometric'],
+      refined_eclectic: ['Refined', 'Eclectic']
+    };
+    return names[axis] || [axis.split('_')[0], axis.split('_')[1]];
   };
   
   // Export profile data
@@ -43,35 +55,39 @@ const Completion = () => {
           <CheckCircle size={64} />
         </div>
         <h1>Your Taste Profile</h1>
-        <p>Based on {derivedProfile.raw_data.phase1.images_shown} image responses</p>
+        <p>Based on {sampleSize} comparative rankings</p>
       </div>
       
       {/* Style Axes Visualization */}
       <div className="completion__section">
         <h2>Design DNA</h2>
         <div className="style-axes-display">
-          {Object.entries(style_profile).filter(([key]) => 
-            !['style_tags', 'confidence'].includes(key)
-          ).map(([axis, value]) => (
-            <div key={axis} className="axis-row">
-              <div className="axis-row__labels">
-                <span>{axis.split('_')[0]}</span>
-                <span>{axis.split('_')[1]}</span>
-              </div>
-              <div className="axis-row__track">
-                <div 
-                  className="axis-row__marker"
-                  style={{ left: `${(value / 10) * 100}%` }}
-                >
-                  <span className="axis-row__value">{value.toFixed(1)}</span>
+          {Object.entries(styleAxes).map(([axis, data]) => {
+            const [leftLabel, rightLabel] = getAxisDisplayName(axis);
+            const value = data.value;
+            
+            return (
+              <div key={axis} className="axis-row">
+                <div className="axis-row__labels">
+                  <span>{leftLabel}</span>
+                  <span>{rightLabel}</span>
                 </div>
-                <div className="axis-row__fill" style={{ width: `${(value / 10) * 100}%` }} />
+                <div className="axis-row__track">
+                  <div 
+                    className="axis-row__marker"
+                    style={{ left: `${(value / 10) * 100}%` }}
+                  >
+                    <span className="axis-row__value">{value.toFixed(1)}</span>
+                  </div>
+                  <div className="axis-row__fill" style={{ width: `${(value / 10) * 100}%` }} />
+                </div>
+                <div className="axis-row__description">
+                  {getAxisDescription(axis, value)}
+                  {data.confidence >= 0.9 && <span className="confidence-badge">High Confidence</span>}
+                </div>
               </div>
-              <div className="axis-row__description">
-                {getAxisDescription(axis, value)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       
@@ -79,7 +95,7 @@ const Completion = () => {
       <div className="completion__section">
         <h2>Your Style</h2>
         <div className="style-tags">
-          {style_profile.style_tags.map(tag => (
+          {styleTags.map(tag => (
             <span key={tag} className="style-tag">
               {tag.replace(/_/g, ' ')}
             </span>
@@ -96,13 +112,13 @@ const Completion = () => {
               <div 
                 className="complexity-meter__range"
                 style={{ 
-                  left: `${(complexity_profile.complexity_range[0] / 10) * 100}%`,
-                  width: `${((complexity_profile.complexity_range[1] - complexity_profile.complexity_range[0]) / 10) * 100}%`
+                  left: `${(complexity.range.min / 10) * 100}%`,
+                  width: `${((complexity.range.max - complexity.range.min) / 10) * 100}%`
                 }}
               />
               <div 
                 className="complexity-meter__optimal"
-                style={{ left: `${(complexity_profile.optimal_complexity / 10) * 100}%` }}
+                style={{ left: `${(complexity.optimal / 10) * 100}%` }}
               />
             </div>
             <div className="complexity-meter__labels">
@@ -112,15 +128,15 @@ const Completion = () => {
           </div>
           <div className="complexity-stats">
             <div className="stat">
-              <span className="stat__value">{complexity_profile.optimal_complexity.toFixed(1)}</span>
-              <span className="stat__label">Optimal Complexity</span>
+              <span className="stat__value">{complexity.optimal}</span>
+              <span className="stat__label">Optimal Level</span>
             </div>
             <div className="stat">
-              <span className="stat__value">{complexity_profile.coherence_preference.toFixed(1)}</span>
-              <span className="stat__label">Coherence Need</span>
+              <span className="stat__value">{complexity.range.min} - {complexity.range.max}</span>
+              <span className="stat__label">Comfort Range</span>
             </div>
             <div className="stat">
-              <span className="stat__value">{Math.round(complexity_profile.complexity_consistency * 100)}%</span>
+              <span className="stat__value">{Math.round(complexity.consistency * 100)}%</span>
               <span className="stat__label">Consistency</span>
             </div>
           </div>
@@ -131,23 +147,37 @@ const Completion = () => {
       <div className="completion__section">
         <h2>Material Affinities</h2>
         <div className="materials-display">
-          <div className="materials-group">
-            <h4>Drawn To</h4>
-            <div className="material-chips">
-              {material_profile.primary_affinities.map(mat => (
-                <span key={mat} className="material-chip material-chip--positive">
-                  {mat.replace(/_/g, ' ')}
-                </span>
-              ))}
+          {materials.primary.length > 0 && (
+            <div className="materials-group">
+              <h4>Drawn To</h4>
+              <div className="material-chips">
+                {materials.primary.map(mat => (
+                  <span key={mat.material} className="material-chip material-chip--positive">
+                    {mat.material.replace(/_/g, ' ')}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-          {material_profile.aversions.length > 0 && (
+          )}
+          {materials.secondary.length > 0 && (
+            <div className="materials-group">
+              <h4>Also Like</h4>
+              <div className="material-chips">
+                {materials.secondary.slice(0, 4).map(mat => (
+                  <span key={mat.material} className="material-chip material-chip--neutral">
+                    {mat.material.replace(/_/g, ' ')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {materials.aversions.length > 0 && (
             <div className="materials-group">
               <h4>Less Drawn To</h4>
               <div className="material-chips">
-                {material_profile.aversions.map(mat => (
-                  <span key={mat} className="material-chip material-chip--negative">
-                    {mat.replace(/_/g, ' ')}
+                {materials.aversions.map(mat => (
+                  <span key={mat.material} className="material-chip material-chip--negative">
+                    {mat.material.replace(/_/g, ' ')}
                   </span>
                 ))}
               </div>
@@ -156,29 +186,54 @@ const Completion = () => {
         </div>
       </div>
       
-      {/* Color Profile */}
-      <div className="completion__section">
-        <h2>Color Palette</h2>
-        <div className="color-display">
-          <div className="color-primary">
-            <span className="color-swatch" data-palette={color_profile.primary_palette}></span>
-            <span>{color_profile.primary_palette.replace(/_/g, ' ')}</span>
-          </div>
-          <div className="color-details">
-            <span>Temperature: {color_profile.color_temperature < 5 ? 'Warm' : 'Cool'}</span>
-            <span>Saturation: {color_profile.saturation_preference}</span>
+      {/* Variation Preferences - Unique insight from quad comparisons */}
+      {variationPreferences && variationPreferences.length > 0 && (
+        <div className="completion__section">
+          <h2>Detailed Preferences</h2>
+          <p className="section-subtitle">What your comparative rankings revealed</p>
+          <div className="variation-preferences">
+            {variationPreferences.slice(0, 6).map(pref => (
+              <div key={pref.dimension} className="variation-pref">
+                <div className="variation-pref__header">
+                  <Layers size={16} />
+                  <span>{pref.dimension.replace(/_/g, ' ')}</span>
+                </div>
+                <div className="variation-pref__indicator">
+                  <div className="variation-pref__bar">
+                    <div 
+                      className="variation-pref__fill"
+                      style={{ width: `${(pref.averagePreferred / 10) * 100}%` }}
+                    />
+                  </div>
+                  <span className="variation-pref__label">
+                    {pref.preferredEnd === 'low' ? 'Prefer subtle' : 'Prefer bold'}
+                  </span>
+                </div>
+                <div className="variation-pref__strength">
+                  Strength: {Math.round(pref.strength * 100)}%
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
       
-      {/* Session Info */}
-      <div className="completion__session-info">
-        <p>
-          Completed {new Date(derivedProfile.sessionMetadata.completedAt).toLocaleDateString()} 
-          {' '}in {derivedProfile.sessionMetadata.durationMinutes} minutes
-          {derivedProfile.sessionMetadata.participant && ` by ${derivedProfile.sessionMetadata.participant}`}
-        </p>
-      </div>
+      {/* Phase 3 Resolutions */}
+      {derivedProfile.resolutions && derivedProfile.resolutions.length > 0 && (
+        <div className="completion__section">
+          <h2>Your Decisions</h2>
+          <div className="resolutions-display">
+            {derivedProfile.resolutions.map(res => (
+              <div key={res.pairId} className="resolution-item">
+                <span className="resolution-dimension">{res.dimension}</span>
+                <span className="resolution-choice">
+                  {res.choice === 'A' ? '←' : '→'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Actions */}
       <div className="completion__actions">
