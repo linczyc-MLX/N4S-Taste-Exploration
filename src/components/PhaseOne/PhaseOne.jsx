@@ -2,21 +2,25 @@ import React, { useState, useCallback } from 'react';
 import { useTaste } from '../../contexts/TasteContext';
 import { Heart, Meh, X, ChevronUp } from 'lucide-react';
 import ProgressIndicator from '../shared/ProgressIndicator';
+import DividerCard from '../shared/DividerCard';
 
 const PhaseOne = () => {
   const { 
-    currentImage, 
-    phase1Progress, 
-    phase1Index, 
-    phase1Images,
-    recordPhase1Choice 
+    currentItem,
+    imageCount,
+    totalImages,
+    phase1Progress,
+    phase1Sequence,
+    phase1Index,
+    recordPhase1Choice,
+    continuePastDivider
   } = useTaste();
   
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [isAnimating, setIsAnimating] = useState(false);
   
   const handleChoice = useCallback((choice) => {
-    if (isAnimating) return;
+    if (isAnimating || !currentItem || currentItem.type !== 'image') return;
     
     // Set animation direction
     const directionMap = {
@@ -34,23 +38,50 @@ const PhaseOne = () => {
       setSwipeDirection(null);
       setIsAnimating(false);
     }, 300);
-  }, [isAnimating, recordPhase1Choice]);
+  }, [isAnimating, currentItem, recordPhase1Choice]);
   
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'ArrowRight') handleChoice('love');
-      if (e.key === 'ArrowUp') handleChoice('ok');
-      if (e.key === 'ArrowLeft') handleChoice('notForMe');
+      if (!currentItem) return;
+      
+      if (currentItem.type === 'divider') {
+        if (e.key === 'Enter' || e.key === ' ') {
+          continuePastDivider();
+        }
+      } else {
+        if (e.key === 'ArrowRight') handleChoice('love');
+        if (e.key === 'ArrowUp') handleChoice('ok');
+        if (e.key === 'ArrowLeft') handleChoice('notForMe');
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleChoice]);
+  }, [handleChoice, currentItem, continuePastDivider]);
   
-  if (!currentImage) {
+  if (!currentItem) {
     return <div className="phase-one__loading">Loading...</div>;
   }
+  
+  // Render divider card
+  if (currentItem.type === 'divider') {
+    return (
+      <div className="phase-one phase-one--divider">
+        <DividerCard 
+          category={currentItem.category}
+          categoryIndex={currentItem.categoryIndex}
+          totalCategories={currentItem.totalCategories}
+          onContinue={continuePastDivider}
+        />
+      </div>
+    );
+  }
+  
+  // Get upcoming images for stack effect
+  const upcomingImages = phase1Sequence
+    .slice(phase1Index + 1, phase1Index + 4)
+    .filter(item => item.type === 'image');
   
   return (
     <div className="phase-one">
@@ -61,10 +92,15 @@ const PhaseOne = () => {
           <h2>Discovery</h2>
         </div>
         <ProgressIndicator 
-          current={phase1Index + 1} 
-          total={phase1Images.length}
+          current={imageCount + 1} 
+          total={totalImages}
           percentage={phase1Progress}
         />
+      </div>
+      
+      {/* Current Category Label */}
+      <div className="phase-one__category-label">
+        {currentItem.category.replace(/_/g, ' ')}
       </div>
       
       {/* Instructions */}
@@ -75,7 +111,7 @@ const PhaseOne = () => {
       {/* Card Stack */}
       <div className="card-stack">
         {/* Background cards for depth effect */}
-        {phase1Images.slice(phase1Index + 1, phase1Index + 3).map((img, idx) => (
+        {upcomingImages.slice(0, 2).map((img, idx) => (
           <div 
             key={img.id} 
             className="swipe-card swipe-card--background"
@@ -97,12 +133,12 @@ const PhaseOne = () => {
         >
           <div 
             className="swipe-card__image"
-            style={{ background: currentImage.gradient }}
+            style={{ background: currentItem.gradient }}
           >
             {/* Placeholder label */}
             <div className="swipe-card__placeholder-label">
-              <span className="swipe-card__category">{currentImage.label}</span>
-              <span className="swipe-card__style">{currentImage.styleLabel}</span>
+              <span className="swipe-card__category">{currentItem.label}</span>
+              <span className="swipe-card__style">{currentItem.styleLabel}</span>
             </div>
           </div>
           

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { calculateProfile } from '../utils/profileCalculator';
-import { placeholderImages, generateBoards } from '../data/placeholderImages';
+import { placeholderImages, generateBoards, categoryOrder } from '../data/placeholderImages';
 
 const TasteContext = createContext();
 
@@ -12,6 +12,35 @@ export const useTaste = () => {
   return context;
 };
 
+// Build sequence with dividers before each category
+const buildPhase1Sequence = (images) => {
+  const sequence = [];
+  let currentCategory = null;
+  let categoryIndex = 0;
+  
+  images.forEach((image) => {
+    // If this is a new category, insert a divider
+    if (image.category !== currentCategory) {
+      sequence.push({
+        type: 'divider',
+        category: image.category,
+        categoryIndex: categoryIndex,
+        totalCategories: categoryOrder.length
+      });
+      currentCategory = image.category;
+      categoryIndex++;
+    }
+    
+    // Add the image
+    sequence.push({
+      type: 'image',
+      ...image
+    });
+  });
+  
+  return sequence;
+};
+
 export const TasteProvider = ({ children }) => {
   // Session metadata
   const [sessionMode, setSessionMode] = useState(null); // 'together' | 'principal' | 'secondary'
@@ -21,14 +50,16 @@ export const TasteProvider = ({ children }) => {
   // Current phase: 'welcome' | 'phase1' | 'phase2' | 'phase3' | 'complete'
   const [currentPhase, setCurrentPhase] = useState('welcome');
   
-  // Phase 1: Swipe results
-  const [phase1Images, setPhase1Images] = useState([]);
+  // Phase 1: Swipe results (includes dividers in sequence)
+  const [phase1Sequence, setPhase1Sequence] = useState([]);
   const [phase1Index, setPhase1Index] = useState(0);
   const [phase1Results, setPhase1Results] = useState({
     love: [],
     ok: [],
     notForMe: []
   });
+  const [imageCount, setImageCount] = useState(0); // Track actual images (not dividers)
+  const [totalImages, setTotalImages] = useState(0);
   
   // Phase 2: Board selection results
   const [phase2Boards, setPhase2Boards] = useState([]);
@@ -46,32 +77,49 @@ export const TasteProvider = ({ children }) => {
   // Initialize Phase 1
   const initializePhase1 = useCallback(() => {
     // Images are already in client journey order (exterior architecture first, etc.)
-    // Select images maintaining category order, but with variety within each category
-    const selected = placeholderImages.slice(0, 54); // First 54 images in defined order
-    setPhase1Images(selected);
+    const images = placeholderImages.slice(0, 60); // First 60 images
+    const sequence = buildPhase1Sequence(images);
+    
+    setPhase1Sequence(sequence);
     setPhase1Index(0);
     setPhase1Results({ love: [], ok: [], notForMe: [] });
+    setImageCount(0);
+    setTotalImages(images.length);
     setStartTime(new Date());
     setCurrentPhase('phase1');
   }, []);
   
-  // Record Phase 1 choice
+  // Get current item (could be divider or image)
+  const currentItem = phase1Sequence[phase1Index];
+  
+  // Continue past a divider card
+  const continuePastDivider = useCallback(() => {
+    if (phase1Index < phase1Sequence.length - 1) {
+      setPhase1Index(prev => prev + 1);
+    }
+  }, [phase1Index, phase1Sequence.length]);
+  
+  // Record Phase 1 choice (only for images, not dividers)
   const recordPhase1Choice = useCallback((choice) => {
-    const currentImage = phase1Images[phase1Index];
+    const currentImage = phase1Sequence[phase1Index];
+    
+    if (currentImage.type !== 'image') return;
     
     setPhase1Results(prev => ({
       ...prev,
       [choice]: [...prev[choice], currentImage]
     }));
     
-    // Move to next image or complete phase
-    if (phase1Index < phase1Images.length - 1) {
+    setImageCount(prev => prev + 1);
+    
+    // Move to next item or complete phase
+    if (phase1Index < phase1Sequence.length - 1) {
       setPhase1Index(prev => prev + 1);
     } else {
       // Phase 1 complete - generate boards for Phase 2
       completePhase1();
     }
-  }, [phase1Index, phase1Images]);
+  }, [phase1Index, phase1Sequence]);
   
   // Complete Phase 1 and set up Phase 2
   const completePhase1 = useCallback(() => {
@@ -197,9 +245,11 @@ export const TasteProvider = ({ children }) => {
     setParticipantName('');
     setStartTime(null);
     setCurrentPhase('welcome');
-    setPhase1Images([]);
+    setPhase1Sequence([]);
     setPhase1Index(0);
     setPhase1Results({ love: [], ok: [], notForMe: [] });
+    setImageCount(0);
+    setTotalImages(0);
     setPhase2Boards([]);
     setPhase2CurrentBoard(0);
     setPhase2Selections({});
@@ -216,12 +266,14 @@ export const TasteProvider = ({ children }) => {
     participantName,
     
     // Phase 1
-    phase1Images,
+    phase1Sequence,
     phase1Index,
     phase1Results,
-    currentImage: phase1Images[phase1Index],
-    phase1Progress: phase1Images.length > 0 
-      ? Math.round((phase1Index / phase1Images.length) * 100) 
+    currentItem, // Can be divider or image
+    imageCount,
+    totalImages,
+    phase1Progress: totalImages > 0 
+      ? Math.round((imageCount / totalImages) * 100) 
       : 0,
     
     // Phase 2
@@ -242,6 +294,7 @@ export const TasteProvider = ({ children }) => {
     // Actions
     startSession,
     recordPhase1Choice,
+    continuePastDivider,
     togglePhase2Selection,
     nextBoard,
     recordPhase3Choice,

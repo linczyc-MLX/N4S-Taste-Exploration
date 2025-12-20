@@ -23,7 +23,7 @@ const styleGradients = {
 // 1. Exterior Architecture → 2. Living Spaces → 3. Dining → 4. Kitchens → 
 // 5. Family Areas → 6. Primary Bedrooms → 7. Primary Bathrooms → 
 // 8. Guest Bedrooms → 9. Exterior Landscape → 10. Outdoor Living
-const categoryOrder = [
+export const categoryOrder = [
   'exterior_architecture',
   'living_spaces',
   'dining_spaces',

@@ -11,10 +11,23 @@ A client-facing visual preference elicitation module for the N4S ultra-luxury re
 ## Three-Phase Methodology
 
 ### Phase 1: Discovery (Swipe)
-- 54 images presented one at a time
+- **Divider cards** introduce each category before images appear
+- 60 images presented in category order (not random)
 - Client swipes: **Love** (right), **OK** (up), **Not for me** (left)
 - Fast, intuitive, gut-reaction based
 - Keyboard shortcuts: Arrow keys
+
+**Category Order (with dividers):**
+1. Exterior Architecture
+2. Living Spaces
+3. Dining Spaces
+4. Kitchens
+5. Family Areas
+6. Primary Bedrooms
+7. Primary Bathrooms
+8. Guest Bedrooms
+9. Exterior Landscape
+10. Outdoor Living
 
 ### Phase 2: Refinement (Board Selection)
 - 4 curated boards generated from Phase 1 results
@@ -26,6 +39,17 @@ A client-facing visual preference elicitation module for the N4S ultra-luxury re
 - 6 "This or That" pairs
 - Resolves detected contradictions
 - Quick instinct decisions
+
+## Divider Cards
+
+Before each category, a full-screen divider card appears showing:
+- Category icon and title
+- Description of what they'll be evaluating
+- Progress indicator (Category X of 10)
+- Reminder of the swipe actions
+- "Begin [Category]" button
+
+This orients the client and creates natural pauses in the experience.
 
 ## Derived Profile Output
 

@@ -543,6 +543,167 @@ body {
   color: var(--gray-400);
 }
 
+/* Category Label */
+.phase-one__category-label {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   Divider Cards
+   ============================================ */
+.phase-one--divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.divider-card {
+  width: 100%;
+  max-width: 500px;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.divider-card__content {
+  padding: 40px 32px;
+  text-align: center;
+}
+
+.divider-card__progress {
+  margin-bottom: 32px;
+}
+
+.divider-card__progress > span {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.divider-card__progress-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.divider-card__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  transition: all 0.3s ease;
+}
+
+.divider-card__dot.active {
+  background: var(--gold);
+  transform: scale(1.1);
+}
+
+.divider-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  color: var(--white);
+  margin-bottom: 24px;
+}
+
+.divider-card__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 12px;
+}
+
+.divider-card__description {
+  font-size: 1.1rem;
+  color: var(--gray-600);
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.divider-card__instructions {
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 32px;
+}
+
+.divider-card__instructions p {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  margin-bottom: 12px;
+}
+
+.divider-card__actions-preview {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.action-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.action-preview--love {
+  background: rgba(56, 161, 105, 0.1);
+  color: var(--success);
+}
+
+.action-preview--ok {
+  background: rgba(214, 158, 46, 0.1);
+  color: var(--warning);
+}
+
+.action-preview--not {
+  background: rgba(229, 62, 62, 0.1);
+  color: var(--danger);
+}
+
+.divider-card__continue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 40px;
+  background: var(--navy);
+  color: var(--white);
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.divider-card__continue:hover {
+  background: var(--navy-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
 /* ============================================
    Phase Two - Board Selection
    ============================================ */
