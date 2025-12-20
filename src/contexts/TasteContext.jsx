@@ -45,9 +45,9 @@ export const TasteProvider = ({ children }) => {
   
   // Initialize Phase 1
   const initializePhase1 = useCallback(() => {
-    // Shuffle and select 50-60 images for Phase 1
-    const shuffled = [...placeholderImages].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, 54); // 54 images for phase 1
+    // Images are already in client journey order (exterior architecture first, etc.)
+    // Select images maintaining category order, but with variety within each category
+    const selected = placeholderImages.slice(0, 54); // First 54 images in defined order
     setPhase1Images(selected);
     setPhase1Index(0);
     setPhase1Results({ love: [], ok: [], notForMe: [] });
