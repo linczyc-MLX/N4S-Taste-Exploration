@@ -41,6 +41,11 @@ const loadSession = (): TasteSession | null => {
   return stored ? JSON.parse(stored) : null;
 };
 
+// Convert 1-9 scale to 0-5 scale
+const convertToFiveScale = (value: number): number => {
+  return Math.round(((value - 1) / 8) * 5 * 10) / 10;
+};
+
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>('welcome');
   const [session, setSession] = useState<TasteSession | null>(null);
@@ -85,6 +90,7 @@ const App: React.FC = () => {
   };
 
   // Handle image selection
+  // selectionType: 'selected' (0-3), 'all-work' (-1), 'none-appeal' (-2)
   const handleSelection = useCallback((selectedIndex: number) => {
     if (!session || !session.currentCategory) return;
 
@@ -161,18 +167,36 @@ const App: React.FC = () => {
     if (!session) return null;
 
     let totalCT = 0, totalML = 0, totalWC = 0, count = 0;
+    let allWorkCount = 0, noneAppealCount = 0;
     const regionCounts: Record<string, number> = {};
     const materialCounts: Record<string, number> = {};
 
     Object.values(session.progress).forEach(catProgress => {
       catProgress.selections.forEach(sel => {
         const quad = quads[sel.quadId];
-        if (quad && sel.selectedIndex >= 0) {
+        if (!quad) return;
+
+        // Track skip types
+        if (sel.selectedIndex === -1) {
+          allWorkCount++;
+          // "All work" - include metadata as positive (averaged)
           totalCT += quad.metadata.ct;
           totalML += quad.metadata.ml;
           totalWC += quad.metadata.wc;
           count++;
-
+          regionCounts[quad.metadata.region] = (regionCounts[quad.metadata.region] || 0) + 1;
+          quad.metadata.materials.forEach(mat => {
+            materialCounts[mat] = (materialCounts[mat] || 0) + 1;
+          });
+        } else if (sel.selectedIndex === -2) {
+          noneAppealCount++;
+          // "None appeal" - exclude from positive counts
+        } else if (sel.selectedIndex >= 0) {
+          // Normal selection
+          totalCT += quad.metadata.ct;
+          totalML += quad.metadata.ml;
+          totalWC += quad.metadata.wc;
+          count++;
           regionCounts[quad.metadata.region] = (regionCounts[quad.metadata.region] || 0) + 1;
           quad.metadata.materials.forEach(mat => {
             materialCounts[mat] = (materialCounts[mat] || 0) + 1;
@@ -230,6 +254,21 @@ const App: React.FC = () => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
+  // Get category completion status for progress bar
+  const getCategoryCompletionStatus = () => {
+    if (!session) return [];
+    return categoryOrder.map((catId, index) => {
+      const progress = session.progress[catId];
+      const currentCatIndex = categoryOrder.indexOf(session.currentCategory || '');
+      return {
+        categoryId: catId,
+        isCompleted: progress.completedQuads >= progress.totalQuads,
+        isCurrent: index === currentCatIndex,
+        progress: progress.totalQuads > 0 ? progress.completedQuads / progress.totalQuads : 0
+      };
+    });
+  };
+
   // Handle image load error
   const handleImageError = (quadId: string, index: number) => {
     setImageLoadErrors(prev => ({ ...prev, [`${quadId}_${index}`]: true }));
@@ -274,92 +313,117 @@ const App: React.FC = () => {
     </div>
   );
 
-  // Render exploration screen
+  // Render exploration screen with progress sidebar
   const renderExploration = () => {
     if (!session || !session.currentCategory) return null;
     
     const currentQuad = currentQuads[session.currentQuadIndex || 0];
     const category = getCurrentCategory();
     const catProgress = session.progress[session.currentCategory];
+    const categoryStatus = getCategoryCompletionStatus();
     
     if (!currentQuad || !category) return null;
 
+    const overallProgress = getOverallProgress();
+
     return (
       <div className="exploration-screen">
-        {/* Header */}
-        <header className="exploration-header">
-          <div className="header-left">
-            <span className="category-icon">{category.icon}</span>
-            <div className="category-info">
-              <h2>{category.name}</h2>
-              <span className="quad-counter">
-                {(session.currentQuadIndex || 0) + 1} of {currentQuads.length}
+        {/* Left Progress Sidebar */}
+        <aside className="progress-sidebar">
+          <div className="progress-logo">N4S</div>
+          <div className="progress-track">
+            <div 
+              className="progress-fill" 
+              style={{ height: `${overallProgress}%` }}
+            />
+            <div className="progress-dots">
+              {categoryStatus.map((status, index) => (
+                <div 
+                  key={status.categoryId}
+                  className={`progress-dot ${status.isCompleted ? 'completed' : ''} ${status.isCurrent ? 'current' : ''}`}
+                  title={CATEGORIES[status.categoryId as keyof typeof CATEGORIES]?.name}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="progress-percentage">{overallProgress}%</div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="exploration-main">
+          {/* Header */}
+          <header className="exploration-header">
+            <div className="header-left">
+              <span className="category-icon">{category.icon}</span>
+              <div className="category-info">
+                <h2>{category.name}</h2>
+                <span className="quad-counter">
+                  {(session.currentQuadIndex || 0) + 1} of {currentQuads.length}
+                </span>
+              </div>
+            </div>
+            <div className="header-right">
+              <span className="category-progress-text">
+                Category: <strong>{catProgress.completedQuads}/{catProgress.totalQuads}</strong>
               </span>
             </div>
-          </div>
-          <div className="header-right">
-            <div className="overall-progress">
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ width: `${getOverallProgress()}%` }}
-                />
-              </div>
-              <span className="progress-text">{getOverallProgress()}%</span>
+          </header>
+
+          {/* Quad Display */}
+          <div className="quad-container">
+            <div className="quad-title">
+              <h3>{currentQuad.title}</h3>
+              <span className="quad-subtitle">{currentQuad.subtitle}</span>
             </div>
-          </div>
-        </header>
-
-        {/* Quad Display */}
-        <div className="quad-container">
-          <div className="quad-title">
-            <h3>{currentQuad.title}</h3>
-            <span className="quad-subtitle">{currentQuad.subtitle}</span>
-          </div>
-          
-          <div className="quad-grid">
-            {[0, 1, 2, 3].map(index => {
-              const imageKey = `${currentQuad.quadId}_${index}`;
-              const hasError = imageLoadErrors[imageKey];
-              
-              return (
-                <button
-                  key={index}
-                  className="quad-image-btn"
-                  onClick={() => handleSelection(index)}
-                  disabled={hasError}
-                >
-                  {hasError ? (
-                    <div className="image-error">
-                      <span>Image unavailable</span>
+            
+            <div className="quad-grid">
+              {[0, 1, 2, 3].map(index => {
+                const imageKey = `${currentQuad.quadId}_${index}`;
+                const hasError = imageLoadErrors[imageKey];
+                
+                return (
+                  <button
+                    key={index}
+                    className="quad-image-btn"
+                    onClick={() => handleSelection(index)}
+                    disabled={hasError}
+                  >
+                    {hasError ? (
+                      <div className="image-error">
+                        <span>Image unavailable</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={getImageUrl(currentQuad.quadId, index)}
+                        alt={`${currentQuad.title} option ${index + 1}`}
+                        loading="lazy"
+                        onError={() => handleImageError(currentQuad.quadId, index)}
+                      />
+                    )}
+                    <div className="image-overlay">
+                      <span className="select-label">Select</span>
                     </div>
-                  ) : (
-                    <img
-                      src={getImageUrl(currentQuad.quadId, index)}
-                      alt={`${currentQuad.title} option ${index + 1}`}
-                      loading="lazy"
-                      onError={() => handleImageError(currentQuad.quadId, index)}
-                    />
-                  )}
-                  <div className="image-overlay">
-                    <span className="select-label">Select</span>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="selection-hint">
+              Click the image that best represents your preference
+            </p>
           </div>
 
-          <p className="selection-hint">
-            Click the image that best represents your preference
-          </p>
-        </div>
-
-        {/* Skip option */}
-        <div className="skip-container">
-          <button className="btn-skip" onClick={() => handleSelection(-1)}>
-            Skip this quad
-          </button>
-        </div>
+          {/* Dual Skip Buttons */}
+          <div className="skip-container">
+            <button className="btn-success" onClick={() => handleSelection(-1)}>
+              All of these work for me
+            </button>
+            <span className="skip-divider">or</span>
+            <button className="btn-danger" onClick={() => handleSelection(-2)}>
+              None of these appeal to me
+            </button>
+          </div>
+        </main>
       </div>
     );
   };
@@ -409,6 +473,44 @@ const App: React.FC = () => {
     );
   };
 
+  // Render DNA slider component
+  const renderDNASlider = (
+    label: string,
+    value: number,
+    leftLabel: string,
+    rightLabel: string
+  ) => {
+    const fiveScaleValue = convertToFiveScale(value);
+    const percentage = ((value - 1) / 8) * 100;
+
+    return (
+      <div className="dna-slider">
+        <div className="dna-slider-header">
+          <span className="dna-slider-label">{label}</span>
+          <span className="dna-slider-value">{fiveScaleValue.toFixed(1)}</span>
+        </div>
+        <div className="dna-slider-track">
+          <div 
+            className="dna-slider-indicator" 
+            style={{ left: `${percentage}%` }}
+          />
+        </div>
+        <div className="dna-slider-labels">
+          <span>{leftLabel}</span>
+          <span>{rightLabel}</span>
+        </div>
+        <div className="dna-scale-numbers">
+          <span>0</span>
+          <span>1</span>
+          <span>2</span>
+          <span>3</span>
+          <span>4</span>
+          <span>5</span>
+        </div>
+      </div>
+    );
+  };
+
   // Render analysis screen
   const renderAnalysis = () => {
     const metrics = calculateStyleMetrics();
@@ -440,52 +542,30 @@ const App: React.FC = () => {
             <p>Your overall design aesthetic</p>
           </div>
 
-          {/* Metrics */}
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <div className="metric-label">Contemporary ↔ Traditional</div>
-              <div className="metric-bar">
-                <div 
-                  className="metric-indicator" 
-                  style={{ left: `${((metrics.avgCT - 1) / 8) * 100}%` }}
-                />
-              </div>
-              <div className="metric-ends">
-                <span>Contemporary</span>
-                <span>{metrics.avgCT.toFixed(1)}</span>
-                <span>Traditional</span>
-              </div>
-            </div>
-
-            <div className="metric-card">
-              <div className="metric-label">Minimal ↔ Layered</div>
-              <div className="metric-bar">
-                <div 
-                  className="metric-indicator" 
-                  style={{ left: `${((metrics.avgML - 1) / 8) * 100}%` }}
-                />
-              </div>
-              <div className="metric-ends">
-                <span>Minimal</span>
-                <span>{metrics.avgML.toFixed(1)}</span>
-                <span>Layered</span>
-              </div>
-            </div>
-
-            <div className="metric-card">
-              <div className="metric-label">Warm ↔ Cool</div>
-              <div className="metric-bar">
-                <div 
-                  className="metric-indicator" 
-                  style={{ left: `${((metrics.avgWC - 1) / 8) * 100}%` }}
-                />
-              </div>
-              <div className="metric-ends">
-                <span>Warm</span>
-                <span>{metrics.avgWC.toFixed(1)}</span>
-                <span>Cool</span>
-              </div>
-            </div>
+          {/* Design DNA Sliders */}
+          <div className="design-dna-section">
+            <h3>Design DNA</h3>
+            
+            {renderDNASlider(
+              'Style Era',
+              metrics.avgCT,
+              'Contemporary',
+              'Traditional'
+            )}
+            
+            {renderDNASlider(
+              'Material Complexity',
+              metrics.avgML,
+              'Minimal',
+              'Layered'
+            )}
+            
+            {renderDNASlider(
+              'Color Temperature',
+              metrics.avgWC,
+              'Warm',
+              'Cool'
+            )}
           </div>
 
           {/* Preferences */}
@@ -518,12 +598,18 @@ const App: React.FC = () => {
           <div className="analysis-actions">
             <button className="btn-primary" onClick={() => {
               // Export results
-              const data = {
+              const exportData = {
                 session,
-                metrics,
+                metrics: {
+                  ...metrics,
+                  // Include 0-5 scale values
+                  ctScale5: convertToFiveScale(metrics.avgCT),
+                  mlScale5: convertToFiveScale(metrics.avgML),
+                  wcScale5: convertToFiveScale(metrics.avgWC)
+                },
                 exportedAt: new Date().toISOString()
               };
-              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.href = url;

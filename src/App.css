@@ -1,11 +1,13 @@
 /* ============================================
    N4S TASTE EXPLORATION - APP STYLES
+   Matching N4S Dashboard Design System
    ============================================ */
 
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--color-bg-primary);
 }
 
 /* ============================================
@@ -13,8 +15,8 @@
    ============================================ */
 
 .btn-primary {
-  background: var(--color-accent);
-  color: white;
+  background: var(--color-navy);
+  color: var(--color-text-light);
   border: none;
   padding: 14px 32px;
   border-radius: var(--border-radius-sm);
@@ -25,14 +27,14 @@
 }
 
 .btn-primary:hover {
-  background: var(--color-accent-hover);
+  background: var(--color-navy-light);
 }
 
 .btn-secondary {
   background: transparent;
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  padding: 14px 32px;
+  color: var(--color-navy);
+  border: 2px solid var(--color-navy);
+  padding: 12px 30px;
   border-radius: var(--border-radius-sm);
   font-size: 16px;
   font-weight: 500;
@@ -41,22 +43,40 @@
 }
 
 .btn-secondary:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  background: var(--color-navy);
+  color: var(--color-text-light);
 }
 
-.btn-skip {
-  background: transparent;
+.btn-success {
+  background: var(--color-success);
+  color: var(--color-text-light);
   border: none;
-  color: var(--color-text-muted);
+  padding: 12px 24px;
+  border-radius: var(--border-radius-sm);
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 8px 16px;
-  transition: color var(--transition);
+  transition: background var(--transition);
 }
 
-.btn-skip:hover {
-  color: var(--color-text);
+.btn-success:hover {
+  background: var(--color-success-light);
+}
+
+.btn-danger {
+  background: var(--color-error);
+  color: var(--color-text-light);
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.btn-danger:hover {
+  background: var(--color-error-light);
 }
 
 /* ============================================
@@ -69,7 +89,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+  background: var(--color-bg-primary);
 }
 
 .welcome-content {
@@ -78,21 +98,23 @@
 }
 
 .welcome-logo {
-  font-size: 48px;
+  font-family: var(--font-heading);
+  font-size: 56px;
   font-weight: 700;
-  color: var(--color-accent);
-  margin-bottom: 16px;
+  color: var(--color-navy);
+  margin-bottom: 8px;
   letter-spacing: 2px;
 }
 
 .welcome-content h1 {
   font-size: 36px;
+  color: var(--color-navy);
   margin-bottom: 16px;
 }
 
 .welcome-subtitle {
   font-size: 18px;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   margin-bottom: 40px;
 }
 
@@ -105,12 +127,15 @@
   background: var(--color-bg-card);
   padding: 24px;
   border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .info-item {
   display: flex;
   align-items: center;
   gap: 12px;
+  color: var(--color-text-secondary);
 }
 
 .info-icon {
@@ -124,14 +149,101 @@
 }
 
 /* ============================================
-   EXPLORATION SCREEN
+   EXPLORATION SCREEN WITH PROGRESS BAR
    ============================================ */
 
 .exploration-screen {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   background: var(--color-bg-primary);
+}
+
+/* Left Progress Bar */
+.progress-sidebar {
+  width: var(--progress-bar-width);
+  background: var(--color-navy);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 10px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.progress-logo {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  margin-bottom: 30px;
+}
+
+.progress-track {
+  flex: 1;
+  width: 8px;
+  background: var(--color-navy-light);
+  border-radius: 4px;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--color-accent);
+  border-radius: 4px;
+  transition: height 0.3s ease;
+}
+
+.progress-dots {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.progress-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-navy-light);
+  border: 2px solid var(--color-navy-light);
+  transition: all 0.3s ease;
+}
+
+.progress-dot.completed {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.progress-dot.current {
+  background: var(--color-text-light);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.3);
+}
+
+.progress-percentage {
+  color: var(--color-text-light);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Main Content Area */
+.exploration-main {
+  flex: 1;
+  margin-left: var(--progress-bar-width);
+  display: flex;
+  flex-direction: column;
 }
 
 .exploration-header {
@@ -139,7 +251,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-card);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -173,31 +285,13 @@
   gap: 16px;
 }
 
-.overall-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.progress-bar {
-  width: 120px;
-  height: 8px;
-  background: var(--color-bg-card);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--color-accent);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
+.category-progress-text {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--color-accent);
-  min-width: 40px;
+  color: var(--color-text-muted);
+}
+
+.category-progress-text strong {
+  color: var(--color-navy);
 }
 
 /* Quad Container */
@@ -207,7 +301,7 @@
   flex-direction: column;
   align-items: center;
   padding: 24px;
-  max-width: 1200px;
+  max-width: 1000px;
   margin: 0 auto;
   width: 100%;
 }
@@ -218,7 +312,7 @@
 }
 
 .quad-title h3 {
-  font-size: 24px;
+  font-size: 28px;
   margin-bottom: 4px;
 }
 
@@ -232,8 +326,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   width: 100%;
-  max-width: 900px;
-  aspect-ratio: 4/5;
+  max-width: 800px;
 }
 
 @media (min-width: 768px) {
@@ -245,17 +338,19 @@
 .quad-image-btn {
   position: relative;
   background: var(--color-bg-card);
-  border: 2px solid transparent;
+  border: 3px solid var(--color-border);
   border-radius: var(--border-radius);
   overflow: hidden;
   cursor: pointer;
   transition: all var(--transition);
   padding: 0;
+  aspect-ratio: 4/5;
 }
 
 .quad-image-btn:hover {
   border-color: var(--color-accent);
   transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .quad-image-btn:focus {
@@ -276,7 +371,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-input);
   color: var(--color-text-muted);
   font-size: 14px;
 }
@@ -284,7 +379,7 @@
 .image-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(233, 69, 96, 0);
+  background: rgba(30, 58, 95, 0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,7 +387,7 @@
 }
 
 .quad-image-btn:hover .image-overlay {
-  background: rgba(233, 69, 96, 0.3);
+  background: rgba(30, 58, 95, 0.4);
 }
 
 .select-label {
@@ -302,6 +397,9 @@
   opacity: 0;
   transform: translateY(10px);
   transition: all var(--transition);
+  background: var(--color-accent);
+  padding: 8px 20px;
+  border-radius: var(--border-radius-sm);
 }
 
 .quad-image-btn:hover .select-label {
@@ -315,9 +413,20 @@
   font-size: 14px;
 }
 
+/* Skip Buttons Container */
 .skip-container {
-  padding: 16px;
-  text-align: center;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.skip-divider {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
 }
 
 /* ============================================
@@ -330,7 +439,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+  background: var(--color-bg-primary);
 }
 
 .complete-content {
@@ -366,6 +475,8 @@
   border-radius: var(--border-radius);
   padding: 24px;
   margin-bottom: 32px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .next-label {
@@ -398,10 +509,11 @@
 .quad-count {
   font-size: 12px;
   color: var(--color-accent);
+  font-weight: 600;
 }
 
 /* ============================================
-   ANALYSIS SCREEN
+   ANALYSIS / DESIGN PROFILE SCREEN
    ============================================ */
 
 .analysis-screen {
@@ -416,7 +528,7 @@
 }
 
 .analysis-header h1 {
-  font-size: 32px;
+  font-size: 36px;
   margin-bottom: 8px;
 }
 
@@ -429,74 +541,124 @@
   margin: 0 auto;
 }
 
+/* Style Label Card */
 .style-label-card {
-  background: linear-gradient(135deg, var(--color-accent) 0%, #ff6b6b 100%);
-  border-radius: var(--border-radius);
+  background: var(--color-navy);
+  border-radius: var(--border-radius-lg);
   padding: 40px;
   text-align: center;
   margin-bottom: 32px;
+  color: var(--color-text-light);
 }
 
 .style-label-card h2 {
-  font-size: 28px;
+  font-size: 32px;
   margin-bottom: 8px;
+  color: var(--color-text-light);
 }
 
 .style-label-card p {
   opacity: 0.9;
 }
 
-/* Metrics */
-.metrics-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* Design DNA Section */
+.design-dna-section {
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-lg);
+  padding: 32px;
+  margin-bottom: 32px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.design-dna-section h3 {
+  font-size: 24px;
+  margin-bottom: 32px;
+  text-align: center;
+  color: var(--color-navy);
+}
+
+/* DNA Slider Styles */
+.dna-slider {
   margin-bottom: 32px;
 }
 
-.metric-card {
-  background: var(--color-bg-card);
-  border-radius: var(--border-radius);
-  padding: 20px;
+.dna-slider:last-child {
+  margin-bottom: 0;
 }
 
-.metric-label {
-  font-size: 14px;
-  color: var(--color-text-muted);
+.dna-slider-header {
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.metric-bar {
+.dna-slider-label {
+  font-weight: 600;
+  color: var(--color-navy);
+  font-size: 14px;
+}
+
+.dna-slider-value {
+  background: var(--color-accent);
+  color: var(--color-text-light);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dna-slider-track {
   position: relative;
-  height: 8px;
-  background: var(--color-bg-secondary);
-  border-radius: 4px;
+  height: 12px;
+  background: linear-gradient(to right, var(--color-accent-light), var(--color-navy-light));
+  border-radius: 6px;
   margin-bottom: 8px;
 }
 
-.metric-indicator {
+.dna-slider-indicator {
   position: absolute;
-  top: -4px;
-  width: 16px;
-  height: 16px;
-  background: var(--color-accent);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: var(--color-navy);
+  border: 3px solid var(--color-text-light);
   border-radius: 50%;
-  transform: translateX(-50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.metric-ends {
+.dna-slider-labels {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: var(--color-text-muted);
 }
 
-.metric-ends span:nth-child(2) {
-  color: var(--color-accent);
-  font-weight: 600;
+.dna-slider-labels span {
+  max-width: 100px;
 }
 
-/* Preferences */
+.dna-slider-labels span:last-child {
+  text-align: right;
+}
+
+/* Scale Numbers */
+.dna-scale-numbers {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  margin-top: 4px;
+}
+
+.dna-scale-numbers span {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  width: 20px;
+  text-align: center;
+}
+
+/* Preferences Section */
 .preferences-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -507,13 +669,15 @@
 .preference-card {
   background: var(--color-bg-card);
   border-radius: var(--border-radius);
-  padding: 20px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .preference-card h3 {
-  font-size: 16px;
+  font-size: 18px;
   margin-bottom: 16px;
-  color: var(--color-accent);
+  color: var(--color-navy);
 }
 
 .preference-list {
@@ -526,7 +690,7 @@
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .preference-item:last-child {
@@ -535,6 +699,7 @@
 
 .preference-name {
   text-transform: capitalize;
+  color: var(--color-text-secondary);
 }
 
 .preference-count {
@@ -549,11 +714,13 @@
 }
 
 .preference-tag {
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 13px;
   text-transform: capitalize;
+  color: var(--color-text-secondary);
 }
 
 /* Analysis Actions */
@@ -567,9 +734,31 @@
    RESPONSIVE
    ============================================ */
 
+@media (max-width: 768px) {
+  .progress-sidebar {
+    width: 50px;
+  }
+  
+  .progress-logo {
+    font-size: 14px;
+  }
+  
+  .exploration-main {
+    margin-left: 50px;
+  }
+  
+  :root {
+    --progress-bar-width: 50px;
+  }
+}
+
 @media (max-width: 600px) {
   .welcome-content h1 {
     font-size: 28px;
+  }
+  
+  .welcome-logo {
+    font-size: 42px;
   }
 
   .quad-grid {
@@ -577,7 +766,7 @@
   }
 
   .quad-title h3 {
-    font-size: 20px;
+    font-size: 22px;
   }
 
   .exploration-header {
@@ -599,6 +788,15 @@
   }
 
   .style-label-card h2 {
-    font-size: 22px;
+    font-size: 24px;
+  }
+  
+  .skip-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .skip-divider {
+    display: none;
   }
 }
