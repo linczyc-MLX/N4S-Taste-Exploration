@@ -90,7 +90,6 @@ const App: React.FC = () => {
   };
 
   // Handle image selection
-  // selectionType: 'selected' (0-3), 'all-work' (-1), 'none-appeal' (-2)
   const handleSelection = useCallback((selectedIndex: number) => {
     if (!session || !session.currentCategory) return;
 
@@ -115,7 +114,6 @@ const App: React.FC = () => {
     
     // Check if category is complete
     if (nextQuadIndex >= currentQuads.length) {
-      // Move to next category or finish
       const currentCatIndex = categoryOrder.indexOf(session.currentCategory);
       const nextCatIndex = currentCatIndex + 1;
 
@@ -156,6 +154,22 @@ const App: React.FC = () => {
     setQuadStartTime(Date.now());
   }, [session, currentQuads, quadStartTime]);
 
+  // Jump to category (from sidebar)
+  const jumpToCategory = (categoryId: string) => {
+    if (!session) return;
+    const categoryQuads = getQuadsByCategory(categoryId).filter(q => q.enabled);
+    const progress = session.progress[categoryId];
+    
+    setSession({
+      ...session,
+      currentCategory: categoryId,
+      currentQuadIndex: Math.min(progress.completedQuads, categoryQuads.length - 1),
+      lastUpdatedAt: Date.now()
+    });
+    setCurrentQuads(categoryQuads);
+    setQuadStartTime(Date.now());
+  };
+
   // Continue to next category
   const continueToNextCategory = () => {
     setQuadStartTime(Date.now());
@@ -167,7 +181,6 @@ const App: React.FC = () => {
     if (!session) return null;
 
     let totalCT = 0, totalML = 0, totalWC = 0, count = 0;
-    let allWorkCount = 0, noneAppealCount = 0;
     const regionCounts: Record<string, number> = {};
     const materialCounts: Record<string, number> = {};
 
@@ -176,23 +189,9 @@ const App: React.FC = () => {
         const quad = quads[sel.quadId];
         if (!quad) return;
 
-        // Track skip types
-        if (sel.selectedIndex === -1) {
-          allWorkCount++;
-          // "All work" - include metadata as positive (averaged)
-          totalCT += quad.metadata.ct;
-          totalML += quad.metadata.ml;
-          totalWC += quad.metadata.wc;
-          count++;
-          regionCounts[quad.metadata.region] = (regionCounts[quad.metadata.region] || 0) + 1;
-          quad.metadata.materials.forEach(mat => {
-            materialCounts[mat] = (materialCounts[mat] || 0) + 1;
-          });
-        } else if (sel.selectedIndex === -2) {
-          noneAppealCount++;
-          // "None appeal" - exclude from positive counts
-        } else if (sel.selectedIndex >= 0) {
-          // Normal selection
+        // "All work" (-1) and normal selections (0-3) count positively
+        // "None appeal" (-2) is excluded
+        if (sel.selectedIndex >= -1 && sel.selectedIndex !== -2) {
           totalCT += quad.metadata.ct;
           totalML += quad.metadata.ml;
           totalWC += quad.metadata.wc;
@@ -254,19 +253,11 @@ const App: React.FC = () => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  // Get category completion status for progress bar
-  const getCategoryCompletionStatus = () => {
-    if (!session) return [];
-    return categoryOrder.map((catId, index) => {
-      const progress = session.progress[catId];
-      const currentCatIndex = categoryOrder.indexOf(session.currentCategory || '');
-      return {
-        categoryId: catId,
-        isCompleted: progress.completedQuads >= progress.totalQuads,
-        isCurrent: index === currentCatIndex,
-        progress: progress.totalQuads > 0 ? progress.completedQuads / progress.totalQuads : 0
-      };
-    });
+  // Check if category is complete
+  const isCategoryComplete = (categoryId: string) => {
+    if (!session) return false;
+    const progress = session.progress[categoryId];
+    return progress.completedQuads >= progress.totalQuads;
   };
 
   // Handle image load error
@@ -313,68 +304,95 @@ const App: React.FC = () => {
     </div>
   );
 
-  // Render exploration screen with progress sidebar
+  // Render exploration screen
   const renderExploration = () => {
     if (!session || !session.currentCategory) return null;
     
     const currentQuad = currentQuads[session.currentQuadIndex || 0];
     const category = getCurrentCategory();
     const catProgress = session.progress[session.currentCategory];
-    const categoryStatus = getCategoryCompletionStatus();
     
     if (!currentQuad || !category) return null;
 
-    const overallProgress = getOverallProgress();
-
     return (
       <div className="exploration-screen">
-        {/* Left Progress Sidebar */}
-        <aside className="progress-sidebar">
-          <div className="progress-logo">N4S</div>
-          <div className="progress-track">
-            <div 
-              className="progress-fill" 
-              style={{ height: `${overallProgress}%` }}
-            />
-            <div className="progress-dots">
-              {categoryStatus.map((status, index) => (
-                <div 
-                  key={status.categoryId}
-                  className={`progress-dot ${status.isCompleted ? 'completed' : ''} ${status.isCurrent ? 'current' : ''}`}
-                  title={CATEGORIES[status.categoryId as keyof typeof CATEGORIES]?.name}
-                />
-              ))}
+        {/* Left Sidebar */}
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <span className="sidebar-logo-icon">📋</span>
+              <span>N4S</span>
             </div>
+            <button className="sidebar-close">×</button>
           </div>
-          <div className="progress-percentage">{overallProgress}%</div>
+          
+          <nav className="sidebar-nav">
+            {categoryOrder.map(catId => {
+              const cat = CATEGORIES[catId as keyof typeof CATEGORIES];
+              const isComplete = isCategoryComplete(catId);
+              const isActive = catId === session.currentCategory;
+              const progress = session.progress[catId];
+              
+              return (
+                <div 
+                  key={catId}
+                  className={`sidebar-item ${isActive ? 'active' : ''} ${isComplete ? 'completed' : ''}`}
+                  onClick={() => jumpToCategory(catId)}
+                >
+                  <span className="sidebar-item-name">{cat.name}</span>
+                  <span className="sidebar-item-check">
+                    {isComplete ? '☑' : ''}
+                  </span>
+                  {isActive && progress.completedQuads > 0 && !isComplete && (
+                    <div 
+                      className="sidebar-item-progress" 
+                      style={{ 
+                        height: `${(progress.completedQuads / progress.totalQuads) * 100}%` 
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+          
+          <div className="sidebar-footer">
+            <button 
+              className="sidebar-complete-btn"
+              onClick={() => {
+                if (session.completedAt || getOverallProgress() === 100) {
+                  setView('analysis');
+                }
+              }}
+            >
+              Complete
+            </button>
+          </div>
         </aside>
 
         {/* Main Content */}
-        <main className="exploration-main">
-          {/* Header */}
-          <header className="exploration-header">
-            <div className="header-left">
-              <span className="category-icon">{category.icon}</span>
-              <div className="category-info">
-                <h2>{category.name}</h2>
-                <span className="quad-counter">
-                  {(session.currentQuadIndex || 0) + 1} of {currentQuads.length}
-                </span>
-              </div>
+        <main className="main-content">
+          {/* Top Banner */}
+          <header className="top-banner">
+            <div className="banner-left">
+              <div className="banner-title">Welcome to N4S</div>
+              <div className="banner-subtitle">Ultra-Luxury Residential Advisory Platform</div>
             </div>
-            <div className="header-right">
-              <span className="category-progress-text">
-                Category: <strong>{catProgress.completedQuads}/{catProgress.totalQuads}</strong>
-              </span>
-            </div>
+            <div className="banner-right">Taste Exploration</div>
           </header>
 
-          {/* Quad Display */}
-          <div className="quad-container">
-            <div className="quad-title">
-              <h3>{currentQuad.title}</h3>
-              <span className="quad-subtitle">{currentQuad.subtitle}</span>
-            </div>
+          {/* Category Header */}
+          <div className="category-header">
+            <h2 className="category-title">{category.name}</h2>
+            <span className="category-counter">
+              {(session.currentQuadIndex || 0) + 1} of {currentQuads.length}
+            </span>
+          </div>
+
+          {/* Quad Card */}
+          <div className="quad-card">
+            <h3 className="quad-style-title">{currentQuad.title}</h3>
+            <p className="quad-space-type">{currentQuad.subtitle}</p>
             
             <div className="quad-grid">
               {[0, 1, 2, 3].map(index => {
@@ -411,17 +429,17 @@ const App: React.FC = () => {
             <p className="selection-hint">
               Click the image that best represents your preference
             </p>
-          </div>
 
-          {/* Dual Skip Buttons */}
-          <div className="skip-container">
-            <button className="btn-success" onClick={() => handleSelection(-1)}>
-              All of these work for me
-            </button>
-            <span className="skip-divider">or</span>
-            <button className="btn-danger" onClick={() => handleSelection(-2)}>
-              None of these appeal to me
-            </button>
+            {/* Dual Skip Buttons */}
+            <div className="skip-buttons">
+              <button className="btn-outline-success" onClick={() => handleSelection(-1)}>
+                All of these work for me
+              </button>
+              <span className="skip-divider">or</span>
+              <button className="btn-outline-danger" onClick={() => handleSelection(-2)}>
+                None of these appeal to me
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -602,7 +620,6 @@ const App: React.FC = () => {
                 session,
                 metrics: {
                   ...metrics,
-                  // Include 0-5 scale values
                   ctScale5: convertToFiveScale(metrics.avgCT),
                   mlScale5: convertToFiveScale(metrics.avgML),
                   wcScale5: convertToFiveScale(metrics.avgWC)
