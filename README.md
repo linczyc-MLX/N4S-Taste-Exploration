@@ -1,195 +1,176 @@
 # N4S Taste Exploration
 
-**Task Code:** P1.C.3  
-**Module:** C (FYI - Find Your Inspiration)  
-**Phase:** P1 (Ask the Right Questions)
+A standalone visual preference discovery application for luxury residential design clients.
 
 ## Overview
 
-A client-facing visual preference elicitation module for the N4S ultra-luxury residential advisory platform. Uses **comparative ranking methodology** with image quads to derive nuanced aesthetic profiles without requiring clients to articulate preferences verbally.
+This application guides clients through a curated visual journey across 10 design categories, helping identify their aesthetic preferences through image selection. The results generate a comprehensive design profile used in subsequent advisory phases.
 
-## Key Innovation: Quad-Based Ranking
+## Image Hosting
 
-Instead of swiping individual images (love/ok/not), clients **rank 4 images at a time**. Each quad shows 4 variations on a theme - for example, 4 different entry door treatments ranging from minimal to grand.
+**Images are hosted separately from the application.**
 
-**Why this is better:**
-- **Comparative judgment** is more reliable than absolute judgment
-- **Captures nuance** - within "contemporary entry doors," do they prefer minimal or statement?
-- **More data per interaction** - one quad = ranking of 4 images
-- **Faster completion** - 36 quads vs 144 individual swipes
-- **Richer insights** - we know what they prefer *within* each variation dimension
+```
+Image Base URL: http://do-great.work/PRESENTATIONS/NFS/LIBRARY/IMAGES/
+Pattern: {QUAD_ID}_{INDEX}.png
+Example: http://do-great.work/PRESENTATIONS/NFS/LIBRARY/IMAGES/EA-001_0.png
+```
 
-## Three-Phase Methodology
+The 440 images (110 quads × 4 images each) are stored on IONOS web hosting and referenced by URL.
 
-### Phase 1: Comparative Ranking (Quads)
-- 36 quads presented (144 images total)
-- Each quad = 4 variations on a theme
-- Client taps images in order of preference (1st through 4th)
-- Organized by category with divider cards between sections
+## Categories
 
-**Categories (in client journey order):**
-1. Exterior Architecture (6 quads)
-2. Living Spaces (6 quads)
-3. Dining Spaces (4 quads)
-4. Kitchens (4 quads)
-5. Family Areas (3 quads)
-6. Primary Bedrooms (3 quads)
-7. Primary Bathrooms (3 quads)
-8. Guest Bedrooms (2 quads)
-9. Exterior Landscape (4 quads)
-10. Outdoor Living (3 quads)
+| Category | Code | Quads | Images |
+|----------|------|-------|--------|
+| Living Spaces | LS | 12 | 48 |
+| Exterior Architecture | EA | 12 | 48 |
+| Dining Spaces | DS | 9 | 36 |
+| Kitchens | KT | 9 | 36 |
+| Family Areas | FA | 12 | 48 |
+| Primary Bedrooms | PB | 12 | 48 |
+| Primary Bathrooms | PBT | 12 | 48 |
+| Guest Bedrooms | GB | 8 | 32 |
+| Exterior Landscape | EL | 16 | 64 |
+| Outdoor Living | OL | 8 | 32 |
+| **Total** | | **110** | **440** |
 
-**Variation Dimensions Captured:**
-- material_warmth
-- door_treatment
-- formality_level
-- ornamentation
-- complexity
-- glazing_ratio
-- layering
-- warmth
-- period_influence
-- natural_influence
-- regional_intensity
-- cabinet_style
-- comfort_level
-- luxury_level
-- spa_intensity
-- minimalism
-- pool_style
-- enclosure
-- indoor_outdoor_connection
+## Deployment to IONOS Deploy Now
 
-### Phase 2: Refinement (Board Selection)
-- 4 curated boards generated from top-ranked images
-- Client selects top 3 from each board
-- Forces prioritization among favorites
+### Prerequisites
+- GitHub account
+- IONOS Deploy Now account (you have 3 slots)
 
-### Phase 3: Resolution (Binary Choice)
-- 6 "This or That" pairs
-- Resolves detected preference tensions:
-  - Warmth (Cool vs Warm)
-  - Complexity (Minimal vs Layered)
-  - Period (Contemporary vs Traditional)
-  - Formality (Casual vs Formal)
-  - Nature (Architectural vs Organic)
-  - Ornamentation (Restrained vs Decorative)
+### Step 1: Create GitHub Repository
 
-## Profile Output
+1. Go to GitHub and create a new repository: `n4s-taste-exploration`
+2. Clone it locally or use GitHub web upload
 
-The generated profile includes:
+### Step 2: Upload Application Files
 
-### Style Axes (5 dimensions, 1-10 scale)
-- Contemporary ↔ Traditional
-- Minimal ↔ Layered
-- Warm ↔ Cool
-- Organic ↔ Geometric
-- Refined ↔ Eclectic
+Upload all files from this package to your repository:
+```
+n4s-taste-app/
+├── package.json
+├── tsconfig.json
+├── public/
+│   └── index.html
+└── src/
+    ├── index.tsx
+    ├── index.css
+    ├── App.tsx
+    ├── App.css
+    ├── config/
+    │   └── tasteConfig.ts
+    ├── data/
+    │   └── quadMetadata.ts
+    └── types/
+        └── tasteTypes.ts
+```
 
-Each with confidence score based on ranking consistency.
+### Step 3: Connect to IONOS Deploy Now
 
-### Variation Preferences
-Unique insight from quad comparisons - shows which end of each variation dimension client prefers (e.g., "door_treatment: prefers minimal, 78% strength").
+1. Log in to IONOS Deploy Now
+2. Click "Add New Project"
+3. Select your GitHub repository: `n4s-taste-exploration`
+4. Configure build settings:
 
-### Complexity Calibration
-- Optimal complexity level
-- Acceptable range
-- Consistency score
+```
+Framework: Create React App (should auto-detect)
+Build Command: npm install && CI=false npm run build
+Output Directory: build
+```
 
-### Material Affinities
-- Primary affinities (strongly preferred)
-- Secondary affinities (also liked)
-- Aversions (consistently ranked low)
+**Important:** Use `CI=false` before `npm run build` to prevent warnings from failing the build.
 
-### Style Tags
-Auto-derived labels: "contemporary", "warm_palette", "minimal", etc.
+### Step 4: Deploy
 
-## Divider Cards
+1. Click "Deploy"
+2. Wait for build to complete (2-3 minutes)
+3. Access your app at the provided URL (ending in ...633 based on your setup)
 
-Before each category, a full-screen divider card appears showing:
-- Category icon and title
-- Description of what they'll be evaluating
-- Progress indicator (Category X of 10)
-- Number of quads in the category
-- Reminder of the ranking interaction
-- "Begin [Category]" button
+## Configuration
 
-## Technical Stack
+### Changing Image Source
 
-- React 18
-- Context API for state management
-- Lucide React icons
-- CSS custom properties
-- Mobile-first responsive design
+If you move images to a different location, update `src/config/tasteConfig.ts`:
 
-## Deployment (IONOS Deploy Now)
+```typescript
+export const TASTE_IMAGE_BASE_URL = 'http://your-new-url.com/path/to/images';
+```
 
-1. Push to GitHub repository
-2. IONOS auto-deploys with these settings:
-   - Build commands: `npm install` then `CI=false npm run build`
-   - Output directory: `build`
+### Enabling/Disabling Quads
+
+Edit `src/data/quadMetadata.ts` and set `enabled: false` for any quad you want to hide:
+
+```typescript
+'LS-001': {
+  quadId: 'LS-001',
+  enabled: false,  // This quad won't appear
+  // ...
+}
+```
+
+## Features
+
+- **Session Persistence**: Progress auto-saves to localStorage
+- **Resume Capability**: Return and continue where you left off
+- **Skip Option**: Users can skip quads they feel neutral about
+- **Style Analysis**: Generates CT/ML/WC profile and preferences
+- **Export Results**: Download JSON with complete session data
+
+## Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Build for production
+npm run build
+```
 
 ## File Structure
 
 ```
 src/
-├── components/
-│   ├── Welcome/
-│   ├── PhaseOne/         # Quad ranking + dividers
-│   ├── PhaseTwo/         # Board selection
-│   ├── PhaseThree/       # Binary choice
-│   ├── Completion/       # Profile display
-│   └── shared/
-│       ├── DividerCard.jsx
-│       ├── QuadCard.jsx  # The 4-image ranking component
-│       └── ProgressIndicator.jsx
-├── contexts/
-│   └── TasteContext.jsx  # State management
+├── App.tsx              # Main application component
+├── App.css              # Application styles
+├── index.tsx            # Entry point
+├── index.css            # Base styles
+├── config/
+│   └── tasteConfig.ts   # Image URLs, categories, settings
 ├── data/
-│   └── quadImages.js     # Image quads with metadata
-├── utils/
-│   └── profileCalculator.js  # Ranking → profile algorithm
-└── styles/
-    └── index.css
+│   └── quadMetadata.ts  # All 110 quads with metadata
+└── types/
+    └── tasteTypes.ts    # TypeScript definitions
 ```
 
-## Keyboard Shortcuts
+## Integration with N4S Workflow
 
-- **Enter/Space** - Continue past divider cards
-- Images are tapped (no keyboard shortcuts for ranking)
-
-## Data Flow
+This application is **Phase 2** in the design preference discovery:
 
 ```
-Quad Rankings → Weighted Analysis → Style Axes
-                                  → Variation Preferences
-                                  → Material Affinities
-                                  → Complexity Profile
-                          ↓
-Phase 2 Selections → Priority Refinement
-                          ↓
-Phase 3 Choices → Tension Resolution
-                          ↓
-                   Final Profile (JSON export)
+Phase 1: P1.A.5 Design Preferences (KYC Dashboard)
+         ↓ Broad direction (contemporary/traditional, etc.)
+         
+Phase 2: Taste Exploration (This App)
+         ↓ Visual refinement through image selection
+         
+Phase 3: Mood Board Generation
+         ↓ Compiled visual summary
+         
+Phase 4: FYI Module Integration
+         → Ongoing reference for advisory
 ```
 
-## Ranking Weight Algorithm
+## Support
 
-```javascript
-const RANK_WEIGHTS = {
-  1: 4.0,   // 1st choice - strong positive signal
-  2: 2.5,   // 2nd choice - positive signal
-  3: 1.0,   // 3rd choice - neutral
-  4: 0.25   // 4th choice - slight negative signal
-};
-```
-
-## Next Steps
-
-- P1.C.2: Generate 144 AI images (36 quads × 4 images)
-- P2.C.1: Integrate with FYI architect matching
-- P2.C.2: Multi-stakeholder divergence reporting
+For image hosting questions, images are served from:
+- FTP: home148422849.1and1-data.host
+- Web: http://do-great.work/PRESENTATIONS/NFS/LIBRARY/IMAGES/
 
 ---
 
-*N4S Taste Exploration v4.0 - Quad Ranking Edition*
+*Part of the N4S (Not4Sale) Platform by MLX Consulting*
