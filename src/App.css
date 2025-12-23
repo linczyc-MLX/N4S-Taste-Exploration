@@ -1,6 +1,6 @@
 /* ============================================
    N4S TASTE EXPLORATION - APP STYLES
-   Matching N4S Dashboard Design System
+   Large images layout matching v1
    ============================================ */
 
 .app {
@@ -9,8 +9,9 @@
 }
 
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
+  overflow: hidden;
 }
 
 /* ============================================
@@ -18,19 +19,16 @@
    ============================================ */
 
 .sidebar {
-  width: 200px;
+  width: 180px;
+  min-width: 180px;
   background: #1e3a5f;
   display: flex;
   flex-direction: column;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 100;
+  height: 100vh;
 }
 
 .sidebar-header {
-  padding: 20px 16px;
+  padding: 16px;
   border-bottom: 1px solid #2d4a6f;
 }
 
@@ -40,18 +38,17 @@
   gap: 10px;
   color: #ffffff;
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
 }
 
 .sidebar-logo-icon {
-  font-size: 20px;
+  font-size: 18px;
 }
 
-/* Category Navigation */
 .sidebar-nav {
   flex: 1;
-  padding: 12px 0;
+  padding: 8px 0;
   overflow-y: auto;
 }
 
@@ -59,7 +56,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 12px 16px;
   color: #ffffff;
   font-size: 14px;
   cursor: pointer;
@@ -85,7 +82,6 @@
   font-size: 16px;
 }
 
-/* Complete Button */
 .sidebar-footer {
   padding: 16px;
   border-top: 1px solid #2d4a6f;
@@ -93,7 +89,7 @@
 
 .sidebar-complete-btn {
   width: 100%;
-  padding: 14px;
+  padding: 12px;
   background: #c9a227;
   border: none;
   color: #ffffff;
@@ -101,7 +97,6 @@
   font-weight: 600;
   cursor: pointer;
   border-radius: 8px;
-  transition: background 0.2s ease;
 }
 
 .sidebar-complete-btn:hover {
@@ -109,30 +104,29 @@
 }
 
 /* ============================================
-   MAIN CONTENT
+   MAIN CONTENT - FILLS REMAINING SPACE
    ============================================ */
 
 .main-content {
   flex: 1;
-  margin-left: 200px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: #f5f3ef;
 }
 
 /* ============================================
-   TOP BANNER - NAVY BLUE
+   TOP BANNER - COMPACT
    ============================================ */
 
 .top-banner {
   background: #1e3a5f;
-  padding: 24px 32px;
-  margin: 20px 24px 0 24px;
-  border-radius: 12px;
+  padding: 16px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .banner-left {
@@ -142,108 +136,115 @@
 
 .banner-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   color: #ffffff;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .banner-subtitle {
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
 }
 
 .banner-right {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 600;
   color: #c9a227;
 }
 
 /* ============================================
-   PAGE CONTENT
+   PAGE CONTENT - EXPLORATION VIEW
    ============================================ */
 
 .page-content {
   flex: 1;
-  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px;
+  overflow: hidden;
 }
 
-/* Category Header */
+/* Category Header - Compact */
 .category-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .category-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .category-counter {
-  font-size: 20px;
+  font-size: 16px;
   color: #4a4a4a;
 }
 
 /* ============================================
-   QUAD CARD - LARGE IMAGES
+   EXPLORATION CONTENT - NO CARD, DIRECT LAYOUT
    ============================================ */
 
-.quad-card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 32px 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+.exploration-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  overflow: hidden;
+}
+
+/* Style title - Compact */
+.quad-header {
+  text-align: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .quad-style-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 4px;
-  text-align: center;
+  margin-bottom: 2px;
 }
 
 .quad-space-type {
-  font-size: 18px;
+  font-size: 16px;
   color: #757575;
-  margin-bottom: 20px;
-  text-align: center;
 }
 
-/* LARGE Quad Grid - NO MAX-WIDTH CONSTRAINT */
+/* ============================================
+   QUAD GRID - LARGE IMAGES FILL SPACE
+   ============================================ */
+
 .quad-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  width: 100%;
-  margin-bottom: 24px;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 8px;
+  min-height: 0;
 }
 
 .quad-image-btn {
   position: relative;
-  background: #f5f3ef;
+  background: #e0dcd5;
   border: 3px solid #e0dcd5;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
-  aspect-ratio: 4/3;
 }
 
 .quad-image-btn:hover {
   border-color: #c9a227;
-  transform: scale(1.01);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .quad-image-btn img {
@@ -262,7 +263,6 @@
   background: #f5f3ef;
   color: #757575;
   font-size: 14px;
-  min-height: 250px;
 }
 
 .image-overlay {
@@ -282,13 +282,13 @@
 .select-label {
   color: white;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 16px;
   opacity: 0;
   transform: translateY(10px);
   transition: all 0.2s ease;
   background: #c9a227;
-  padding: 12px 24px;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border-radius: 6px;
 }
 
 .quad-image-btn:hover .select-label {
@@ -296,18 +296,28 @@
   transform: translateY(0);
 }
 
-/* Selection Hint */
-.selection-hint {
-  color: #757575;
-  font-size: 15px;
-  margin-bottom: 24px;
+/* ============================================
+   FOOTER - BUTTONS
+   ============================================ */
+
+.quad-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  flex-shrink: 0;
 }
 
-/* Skip Buttons */
+.selection-hint {
+  color: #757575;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
 .skip-buttons {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .skip-divider {
@@ -319,9 +329,9 @@
   background: #ffffff;
   color: #2e7d32;
   border: 3px solid #2e7d32;
-  padding: 14px 28px;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -336,9 +346,9 @@
   background: #ffffff;
   color: #c62828;
   border: 3px solid #c62828;
-  padding: 14px 28px;
-  border-radius: 8px;
-  font-size: 15px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -354,53 +364,57 @@
    ============================================ */
 
 .welcome-container {
-  max-width: 600px;
-  margin: 60px auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  padding: 20px;
 }
 
 .welcome-container h1 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 36px;
+  font-size: 32px;
   color: #1e3a5f;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .welcome-subtitle {
-  font-size: 18px;
+  font-size: 16px;
   color: #4a4a4a;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .welcome-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 40px;
+  gap: 12px;
+  margin-bottom: 30px;
   text-align: left;
   background: #ffffff;
-  padding: 28px;
-  border-radius: 12px;
+  padding: 20px;
+  border-radius: 10px;
   border: 1px solid #e0dcd5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  max-width: 400px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   color: #4a4a4a;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .info-icon {
-  font-size: 26px;
+  font-size: 22px;
 }
 
 .welcome-actions {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -408,9 +422,9 @@
   background: #1e3a5f;
   color: #ffffff;
   border: none;
-  padding: 16px 40px;
+  padding: 14px 36px;
   border-radius: 8px;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -424,9 +438,9 @@
   background: transparent;
   color: #1e3a5f;
   border: 2px solid #1e3a5f;
-  padding: 14px 38px;
+  padding: 12px 34px;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -442,75 +456,80 @@
    ============================================ */
 
 .category-complete-container {
-  max-width: 500px;
-  margin: 60px auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  padding: 20px;
 }
 
 .complete-icon {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   background: #2e7d32;
   color: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
-  margin: 0 auto 24px;
+  font-size: 36px;
+  margin-bottom: 20px;
 }
 
 .category-complete-container h2 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 28px;
+  font-size: 26px;
   color: #1e3a5f;
   margin-bottom: 8px;
 }
 
 .complete-progress {
   color: #757575;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .next-category {
   background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 32px;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
   border: 1px solid #e0dcd5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   text-align: left;
+  max-width: 400px;
+  width: 100%;
 }
 
 .next-label {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #757575;
   display: block;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .next-category-info {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .category-icon {
-  font-size: 48px;
+  font-size: 40px;
 }
 
 .next-category-info h3 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 20px;
+  font-size: 18px;
   color: #1e3a5f;
   margin-bottom: 4px;
 }
 
 .next-category-info p {
   color: #757575;
-  font-size: 14px;
+  font-size: 13px;
   margin-bottom: 4px;
 }
 
@@ -525,64 +544,71 @@
    ============================================ */
 
 .analysis-container {
-  max-width: 800px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.analysis-inner {
+  max-width: 700px;
   margin: 0 auto;
 }
 
 .analysis-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .analysis-header h1 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 36px;
+  font-size: 30px;
   color: #1e3a5f;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .analysis-subtitle {
   color: #757575;
+  font-size: 14px;
 }
 
 .style-label-card {
   background: #1e3a5f;
-  border-radius: 16px;
-  padding: 40px;
+  border-radius: 12px;
+  padding: 30px;
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .style-label-card h2 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 32px;
-  margin-bottom: 8px;
+  font-size: 26px;
+  margin-bottom: 6px;
   color: #ffffff;
 }
 
 .style-label-card p {
   color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
 }
 
 .design-dna-section {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 32px;
-  margin-bottom: 32px;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
   border: 1px solid #e0dcd5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .design-dna-section h3 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 24px;
-  margin-bottom: 32px;
+  font-size: 20px;
+  margin-bottom: 24px;
   text-align: center;
   color: #1e3a5f;
 }
 
 .dna-slider {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .dna-slider:last-child {
@@ -592,98 +618,98 @@
 .dna-slider-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .dna-slider-label {
   font-weight: 600;
   color: #1e3a5f;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .dna-slider-value {
   background: #c9a227;
   color: #ffffff;
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 3px 10px;
+  border-radius: 10px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .dna-slider-track {
   position: relative;
-  height: 12px;
+  height: 10px;
   background: linear-gradient(to right, #f5e6b3, #2d4a6f);
-  border-radius: 6px;
-  margin-bottom: 8px;
+  border-radius: 5px;
+  margin-bottom: 6px;
 }
 
 .dna-slider-indicator {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   background: #1e3a5f;
   border: 3px solid #ffffff;
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .dna-slider-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 11px;
   color: #757575;
 }
 
 .dna-scale-numbers {
   display: flex;
   justify-content: space-between;
-  padding: 0 8px;
-  margin-top: 4px;
+  padding: 0 6px;
+  margin-top: 3px;
 }
 
 .dna-scale-numbers span {
-  font-size: 10px;
+  font-size: 9px;
   color: #757575;
-  width: 20px;
+  width: 16px;
   text-align: center;
 }
 
 .preferences-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .preference-card {
   background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 10px;
+  padding: 20px;
   border: 1px solid #e0dcd5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .preference-card h3 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 18px;
-  margin-bottom: 16px;
+  font-size: 16px;
+  margin-bottom: 14px;
   color: #1e3a5f;
 }
 
 .preference-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .preference-item {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px solid #f0ece5;
+  font-size: 14px;
 }
 
 .preference-item:last-child {
@@ -703,22 +729,22 @@
 .preference-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .preference-tag {
   background: #f5f3ef;
   border: 1px solid #e0dcd5;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: 16px;
+  font-size: 12px;
   text-transform: capitalize;
   color: #4a4a4a;
 }
 
 .analysis-actions {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   justify-content: center;
 }
 
@@ -728,38 +754,28 @@
 
 @media (max-width: 900px) {
   .sidebar {
-    width: 180px;
-  }
-  
-  .main-content {
-    margin-left: 180px;
-  }
-  
-  .banner-right {
-    font-size: 28px;
+    width: 160px;
+    min-width: 160px;
   }
 }
 
 @media (max-width: 768px) {
   .sidebar {
-    width: 60px;
+    width: 50px;
+    min-width: 50px;
   }
   
-  .sidebar-item-name {
-    display: none;
-  }
-  
+  .sidebar-item-name,
   .sidebar-footer {
     display: none;
   }
   
-  .main-content {
-    margin-left: 60px;
+  .sidebar-logo span:not(.sidebar-logo-icon) {
+    display: none;
   }
   
   .top-banner {
-    padding: 20px;
-    margin: 16px;
+    padding: 12px 16px;
   }
   
   .banner-right {
@@ -767,14 +783,14 @@
   }
   
   .page-content {
-    padding: 16px;
+    padding: 10px 12px;
   }
 }
 
 @media (max-width: 600px) {
   .skip-buttons {
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
   
   .skip-divider {
