@@ -303,8 +303,8 @@ const App: React.FC = () => {
     if (view === 'prompt-architect') {
       // From Prompt Architect, go back to previous taste exploration view
       setView(previousView);
-    } else if (view === 'exploration') {
-      // From Taste Exploration (4 images), go to KYC Design Preferences page
+    } else if (view === 'exploration' || view === 'admin') {
+      // From Taste Exploration (4 images) or Admin, go to KYC Design Preferences page
       window.location.href = 'https://home-5019238456.app-ionos.space';
     }
   };
@@ -315,7 +315,7 @@ const App: React.FC = () => {
         <div 
           className="sidebar-logo" 
           onClick={handleLogoClick}
-          style={{ cursor: (view === 'prompt-architect' || view === 'exploration') ? 'pointer' : 'default' }}
+          style={{ cursor: (view === 'prompt-architect' || view === 'exploration' || view === 'admin') ? 'pointer' : 'default' }}
         >
           <span className="sidebar-logo-icon">📋</span>
           <span>N4S</span>
