@@ -1,15 +1,43 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TasteSession, TasteQuad, QuadSelection, CategoryProgress, AppView, StyleMetrics } from './types/tasteTypes';
-import { CATEGORIES, getOrderedCategories, SESSION_CONFIG, getImageUrl } from './config/tasteConfig';
-import { quads, categoryOrder, getQuadsByCategory, getEnabledQuads } from './data/quadMetadata';
+import { CATEGORIES, SESSION_CONFIG, getImageUrl } from './config/tasteConfig';
+import { quads, categoryOrder, getQuadsByCategory } from './data/quadMetadata';
 import './App.css';
+
+// Extended AppView to include 'admin'
+type ExtendedAppView = AppView | 'admin';
 
 const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-const createNewSession = (): TasteSession => {
+// Quad enabled state management
+const QUAD_STATE_KEY = 'n4s_quad_enabled_state';
+
+const loadQuadEnabledState = (): Record<string, boolean> => {
+  const stored = localStorage.getItem(QUAD_STATE_KEY);
+  if (stored) {
+    return JSON.parse(stored);
+  }
+  // Default: all quads enabled
+  const defaultState: Record<string, boolean> = {};
+  Object.keys(quads).forEach(quadId => {
+    defaultState[quadId] = quads[quadId].enabled;
+  });
+  return defaultState;
+};
+
+const saveQuadEnabledState = (state: Record<string, boolean>) => {
+  localStorage.setItem(QUAD_STATE_KEY, JSON.stringify(state));
+};
+
+// Get enabled quads for a category using custom state
+const getEnabledQuadsForCategory = (categoryId: string, enabledState: Record<string, boolean>): TasteQuad[] => {
+  return getQuadsByCategory(categoryId).filter(q => enabledState[q.quadId] !== false);
+};
+
+const createNewSession = (enabledState: Record<string, boolean>): TasteSession => {
   const progress: Record<string, CategoryProgress> = {};
   categoryOrder.forEach(catId => {
-    const categoryQuads = getQuadsByCategory(catId).filter(q => q.enabled);
+    const categoryQuads = getEnabledQuadsForCategory(catId, enabledState);
     progress[catId] = {
       categoryId: catId,
       totalQuads: categoryQuads.length,
@@ -41,37 +69,91 @@ const convertToFiveScale = (value: number): number => {
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<AppView>('welcome');
+  const [view, setView] = useState<ExtendedAppView>('welcome');
+  const [previousView, setPreviousView] = useState<ExtendedAppView>('welcome');
   const [session, setSession] = useState<TasteSession | null>(null);
   const [currentQuads, setCurrentQuads] = useState<TasteQuad[]>([]);
   const [quadStartTime, setQuadStartTime] = useState<number>(Date.now());
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
+  const [quadEnabledState, setQuadEnabledState] = useState<Record<string, boolean>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
+  // Load quad enabled state on mount
+  useEffect(() => {
+    const state = loadQuadEnabledState();
+    setQuadEnabledState(state);
+  }, []);
+
+  // Load session on mount
   useEffect(() => {
     const existing = loadSession();
     if (existing && !existing.completedAt) {
       setSession(existing);
-      if (existing.currentCategory) {
-        setCurrentQuads(getQuadsByCategory(existing.currentCategory).filter(q => q.enabled));
+      if (existing.currentCategory && Object.keys(quadEnabledState).length > 0) {
+        setCurrentQuads(getEnabledQuadsForCategory(existing.currentCategory, quadEnabledState));
       }
     }
-  }, []);
+  }, [quadEnabledState]);
 
+  // Auto-save session
   useEffect(() => {
     if (session) saveSession(session);
   }, [session]);
 
+  // Toggle quad enabled state
+  const toggleQuad = (quadId: string) => {
+    const newState = {
+      ...quadEnabledState,
+      [quadId]: !quadEnabledState[quadId]
+    };
+    setQuadEnabledState(newState);
+    saveQuadEnabledState(newState);
+  };
+
+  // Toggle all quads in a category
+  const toggleAllInCategory = (categoryId: string, enabled: boolean) => {
+    const categoryQuads = getQuadsByCategory(categoryId);
+    const newState = { ...quadEnabledState };
+    categoryQuads.forEach(q => {
+      newState[q.quadId] = enabled;
+    });
+    setQuadEnabledState(newState);
+    saveQuadEnabledState(newState);
+  };
+
+  // Toggle category expansion in admin
+  const toggleCategoryExpand = (categoryId: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
+  };
+
+  // Get counts for admin display
+  const getEnabledCount = (categoryId: string) => {
+    const categoryQuads = getQuadsByCategory(categoryId);
+    return categoryQuads.filter(q => quadEnabledState[q.quadId] !== false).length;
+  };
+
+  const getTotalEnabledQuads = () => {
+    return Object.values(quadEnabledState).filter(v => v !== false).length;
+  };
+
+  const getTotalQuads = () => {
+    return Object.keys(quads).length;
+  };
+
   const startExploration = () => {
-    const newSession = createNewSession();
+    const newSession = createNewSession(quadEnabledState);
     setSession(newSession);
-    setCurrentQuads(getQuadsByCategory(categoryOrder[0]).filter(q => q.enabled));
+    setCurrentQuads(getEnabledQuadsForCategory(categoryOrder[0], quadEnabledState));
     setQuadStartTime(Date.now());
     setView('exploration');
   };
 
   const resumeExploration = () => {
     if (session?.currentCategory) {
-      setCurrentQuads(getQuadsByCategory(session.currentCategory).filter(q => q.enabled));
+      setCurrentQuads(getEnabledQuadsForCategory(session.currentCategory, quadEnabledState));
       setQuadStartTime(Date.now());
       setView('exploration');
     }
@@ -106,18 +188,18 @@ const App: React.FC = () => {
       } else {
         const nextCategory = categoryOrder[nextCatIndex];
         setSession({ ...session, progress: updatedProgress, currentCategory: nextCategory, currentQuadIndex: 0, lastUpdatedAt: Date.now() });
-        setCurrentQuads(getQuadsByCategory(nextCategory).filter(q => q.enabled));
+        setCurrentQuads(getEnabledQuadsForCategory(nextCategory, quadEnabledState));
         setView('category-complete');
       }
     } else {
       setSession({ ...session, progress: updatedProgress, currentQuadIndex: nextQuadIndex, lastUpdatedAt: Date.now() });
     }
     setQuadStartTime(Date.now());
-  }, [session, currentQuads, quadStartTime]);
+  }, [session, currentQuads, quadStartTime, quadEnabledState]);
 
   const jumpToCategory = (categoryId: string) => {
     if (!session) return;
-    const categoryQuads = getQuadsByCategory(categoryId).filter(q => q.enabled);
+    const categoryQuads = getEnabledQuadsForCategory(categoryId, quadEnabledState);
     const progress = session.progress[categoryId];
     setSession({ ...session, currentCategory: categoryId, currentQuadIndex: Math.min(progress.completedQuads, categoryQuads.length - 1), lastUpdatedAt: Date.now() });
     setCurrentQuads(categoryQuads);
@@ -128,6 +210,15 @@ const App: React.FC = () => {
   const continueToNextCategory = () => {
     setQuadStartTime(Date.now());
     setView('exploration');
+  };
+
+  const openAdmin = () => {
+    setPreviousView(view);
+    setView('admin');
+  };
+
+  const closeAdmin = () => {
+    setView(previousView);
   };
 
   const calculateStyleMetrics = (): StyleMetrics | null => {
@@ -215,11 +306,14 @@ const App: React.FC = () => {
           );
         })}
       </nav>
-      {isAllComplete() && (
-        <div className="sidebar-footer">
+      <div className="sidebar-footer">
+        <button className="sidebar-admin-btn" onClick={openAdmin}>
+          ⚙ Admin
+        </button>
+        {isAllComplete() && (
           <button className="sidebar-complete-btn" onClick={() => setView('analysis')}>Complete</button>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 
@@ -238,7 +332,7 @@ const App: React.FC = () => {
       <h1>Begin Your Design Journey</h1>
       <p className="welcome-subtitle">Discover your design preferences through a curated visual journey</p>
       <div className="welcome-info">
-        <div className="info-item"><span className="info-icon">🖼️</span><span>110 curated design quads</span></div>
+        <div className="info-item"><span className="info-icon">🖼️</span><span>{getTotalEnabledQuads()} curated design quads</span></div>
         <div className="info-item"><span className="info-icon">📂</span><span>10 categories from living to landscape</span></div>
         <div className="info-item"><span className="info-icon">⏱️</span><span>Approximately 20-30 minutes</span></div>
       </div>
@@ -303,6 +397,8 @@ const App: React.FC = () => {
     const prevCategory = prevCatIndex >= 0 ? CATEGORIES[categoryOrder[prevCatIndex] as keyof typeof CATEGORIES] : null;
     if (!category) return null;
 
+    const enabledQuadsInNextCat = getEnabledQuadsForCategory(session.currentCategory, quadEnabledState).length;
+
     return (
       <div className="category-complete-container">
         <div className="complete-icon">✓</div>
@@ -315,11 +411,103 @@ const App: React.FC = () => {
             <div>
               <h3>{category.name}</h3>
               <p>{category.description}</p>
-              <span className="quad-count">{session.progress[session.currentCategory].totalQuads} selections</span>
+              <span className="quad-count">{enabledQuadsInNextCat} selections</span>
             </div>
           </div>
         </div>
         <button className="btn-primary" onClick={continueToNextCategory}>Continue to {category.name}</button>
+      </div>
+    );
+  };
+
+  const renderAdminContent = () => {
+    const totalEnabled = getTotalEnabledQuads();
+    const totalQuads = getTotalQuads();
+    const disabledCount = totalQuads - totalEnabled;
+
+    return (
+      <div className="admin-container">
+        <div className="admin-header">
+          <h1>Admin: Quad Management</h1>
+          <button className="admin-back-btn" onClick={closeAdmin}>← Back</button>
+        </div>
+
+        <div className="admin-summary">
+          <div className="admin-stat">
+            <span className="admin-stat-label">Total Quads</span>
+            <span className="admin-stat-value">{totalQuads}</span>
+          </div>
+          <div className="admin-stat">
+            <span className="admin-stat-label">Enabled</span>
+            <span className="admin-stat-value">{totalEnabled}</span>
+          </div>
+          <div className="admin-stat">
+            <span className="admin-stat-label">Disabled</span>
+            <span className={`admin-stat-value ${disabledCount > 0 ? 'warning' : ''}`}>{disabledCount}</span>
+          </div>
+        </div>
+
+        <div className="admin-categories">
+          {categoryOrder.map(catId => {
+            const cat = CATEGORIES[catId as keyof typeof CATEGORIES];
+            const categoryQuads = getQuadsByCategory(catId);
+            const enabledCount = getEnabledCount(catId);
+            const isExpanded = expandedCategories[catId];
+
+            return (
+              <div key={catId} className="admin-category">
+                <div className="admin-category-header" onClick={() => toggleCategoryExpand(catId)}>
+                  <div>
+                    <span className="admin-category-title">{cat.name}</span>
+                    <span className="admin-category-count">
+                      {' '}— <span className="enabled">{enabledCount}</span> of {categoryQuads.length} enabled
+                    </span>
+                  </div>
+                  <div className="admin-category-toggle">
+                    <button 
+                      className="admin-toggle-all-btn" 
+                      onClick={(e) => { e.stopPropagation(); toggleAllInCategory(catId, true); }}
+                    >
+                      Enable All
+                    </button>
+                    <button 
+                      className="admin-toggle-all-btn" 
+                      onClick={(e) => { e.stopPropagation(); toggleAllInCategory(catId, false); }}
+                    >
+                      Disable All
+                    </button>
+                    <span className={`admin-expand-icon ${isExpanded ? 'expanded' : ''}`}>▼</span>
+                  </div>
+                </div>
+                
+                {isExpanded && (
+                  <div className="admin-quads-list">
+                    {categoryQuads.map(quad => {
+                      const isEnabled = quadEnabledState[quad.quadId] !== false;
+                      return (
+                        <div key={quad.quadId} className={`admin-quad-item ${!isEnabled ? 'disabled' : ''}`}>
+                          <div className="admin-quad-info">
+                            <div className="admin-quad-title">{quad.title}</div>
+                            <div className="admin-quad-subtitle">{quad.subtitle}</div>
+                            <div className="admin-quad-id">{quad.quadId}</div>
+                          </div>
+                          <label className="toggle-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={isEnabled}
+                              onChange={() => toggleQuad(quad.quadId)}
+                            />
+                            <span className="toggle-slider"></span>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -413,6 +601,7 @@ const App: React.FC = () => {
             {view === 'exploration' && renderExplorationContent()}
             {view === 'category-complete' && renderCategoryCompleteContent()}
             {view === 'analysis' && renderAnalysisContent()}
+            {view === 'admin' && renderAdminContent()}
           </div>
         </main>
       </div>
