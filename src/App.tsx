@@ -4,8 +4,8 @@ import { CATEGORIES, SESSION_CONFIG, getImageUrl } from './config/tasteConfig';
 import { quads, categoryOrder, getQuadsByCategory } from './data/quadMetadata';
 import './App.css';
 
-// Extended AppView to include 'admin'
-type ExtendedAppView = AppView | 'admin';
+// Extended AppView to include 'admin' and 'prompt-architect'
+type ExtendedAppView = AppView | 'admin' | 'prompt-architect';
 
 const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -78,6 +78,18 @@ const App: React.FC = () => {
   const [quadEnabledState, setQuadEnabledState] = useState<Record<string, boolean>>({});
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [hoverPreview, setHoverPreview] = useState<{url: string, x: number, y: number} | null>(null);
+  
+  // Prompt Architect state
+  const [paCategory, setPaCategory] = useState('LS');
+  const [paStyle, setPaStyle] = useState('Modern');
+  const [paDensity, setPaDensity] = useState('Medium');
+  const [paColors, setPaColors] = useState('Neutral, Warm Lighting');
+  const [paPrimaryPrompt, setPaPrimaryPrompt] = useState('');
+  const [paSecondaryPrompt, setPaSecondaryPrompt] = useState('');
+  const [paRefinement, setPaRefinement] = useState('');
+  const [paIsGenerating, setPaIsGenerating] = useState(false);
+  const [paIsGeneratingSecondary, setPaIsGeneratingSecondary] = useState(false);
+  const [paShowSecondaryForm, setPaShowSecondaryForm] = useState(false);
 
   // Load quad enabled state on mount
   useEffect(() => {
@@ -542,9 +554,293 @@ const App: React.FC = () => {
             );
           })}
         </div>
+
+        <div className="admin-footer">
+          <button 
+            className="pa-launch-btn"
+            onClick={() => { setPreviousView('admin'); setView('prompt-architect'); }}
+          >
+            ✨ Prompt Architect
+          </button>
+        </div>
       </div>
     );
   };
+
+  // Prompt Architect categories and styles
+  const PA_CATEGORIES = [
+    { code: 'LS', label: 'Living Spaces' },
+    { code: 'EA', label: 'Exterior Architecture' },
+    { code: 'DS', label: 'Dining Space' },
+    { code: 'KT', label: 'Kitchens' },
+    { code: 'FA', label: 'Family Areas' },
+    { code: 'PB', label: 'Primary Bedrooms' },
+    { code: 'PBT', label: 'Primary Bathrooms' },
+    { code: 'GB', label: 'Guest Bedrooms' },
+    { code: 'EL', label: 'Exterior Landscape' },
+    { code: 'OL', label: 'Outdoor Living' },
+  ];
+
+  const PA_STYLES = [
+    'Modern', 'Contemporary', 'Minimalist', 'Industrial',
+    'Art Deco', 'Transitional', 'Rustic', 'Scandinavian',
+    'Biophilic', 'Mid-Century Modern'
+  ];
+
+  const PA_DENSITIES = ['Low', 'Medium', 'High'];
+
+  const MIDJOURNEY_DEFAULTS = ' --ar 4:5 --style raw --s 250';
+
+  const generatePrimaryPrompt = async () => {
+    setPaIsGenerating(true);
+    setPaPrimaryPrompt('');
+    setPaSecondaryPrompt('');
+    
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `You are an expert Midjourney Prompt Engineer for interior architecture. 
+Create a sophisticated, detailed Midjourney prompt based on these parameters:
+- Category: ${PA_CATEGORIES.find(c => c.code === paCategory)?.label}
+- Style: ${paStyle}
+- Visual Density: ${paDensity}
+- Colors/Mood: ${paColors}
+
+Include details about lighting, textures, camera angle, and rendering style (e.g. '8k', 'unreal engine 5', 'photorealistic').
+
+Format: Just return the raw prompt string, nothing else. Do not include Midjourney parameters like --ar or --style.`
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const generatedText = data.content?.[0]?.text || 'Failed to generate prompt.';
+      setPaPrimaryPrompt(generatedText + MIDJOURNEY_DEFAULTS);
+    } catch (error) {
+      console.error('Error generating prompt:', error);
+      setPaPrimaryPrompt('Error generating prompt. Please try again.');
+    }
+    
+    setPaIsGenerating(false);
+  };
+
+  const generateSecondaryPrompt = async () => {
+    if (!paRefinement.trim() || !paPrimaryPrompt) return;
+    
+    setPaIsGeneratingSecondary(true);
+    
+    try {
+      const cleanPrimary = paPrimaryPrompt.replace(MIDJOURNEY_DEFAULTS, '').trim();
+      
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: `You are an expert Midjourney Prompt Engineer for interior architecture.
+Create a secondary variant of the given prompt that maintains family resemblance but introduces subtle refinements.
+Keep the same general style and mood, but vary elements based on the refinement direction.
+The images should look related but explore different design directions.
+
+Primary prompt: ${cleanPrimary}
+
+Refinement direction: ${paRefinement}
+
+Format: Just return the raw prompt string, nothing else. Do not include Midjourney parameters.`
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const generatedText = data.content?.[0]?.text || 'Failed to generate prompt.';
+      setPaSecondaryPrompt(generatedText + MIDJOURNEY_DEFAULTS);
+      setPaRefinement('');
+      setPaShowSecondaryForm(false);
+    } catch (error) {
+      console.error('Error generating secondary prompt:', error);
+      setPaSecondaryPrompt('Error generating prompt. Please try again.');
+    }
+    
+    setPaIsGeneratingSecondary(false);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const renderPromptArchitectContent = () => (
+    <div className="prompt-architect-container">
+      <div className="pa-header">
+        <div>
+          <h1>✨ AI Interior Architect</h1>
+          <p className="pa-subtitle">Create sophisticated, detailed architectural prompts for Midjourney</p>
+        </div>
+        <button className="admin-back-btn" onClick={() => setView(previousView)}>← Back</button>
+      </div>
+
+      <div className="pa-layout">
+        {/* Controls Panel */}
+        <div className="pa-controls">
+          <div className="pa-section">
+            <label className="pa-label">Design Area</label>
+            <div className="pa-category-grid">
+              {PA_CATEGORIES.map(cat => (
+                <button
+                  key={cat.code}
+                  className={`pa-category-btn ${paCategory === cat.code ? 'active' : ''}`}
+                  onClick={() => setPaCategory(cat.code)}
+                >
+                  <span className="pa-cat-code">{cat.code}</span>
+                  <span className="pa-cat-label">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pa-section">
+            <label className="pa-label">🏛 Architectural Style</label>
+            <div className="pa-style-grid">
+              {PA_STYLES.map(style => (
+                <button
+                  key={style}
+                  className={`pa-style-btn ${paStyle === style ? 'active' : ''}`}
+                  onClick={() => setPaStyle(style)}
+                >
+                  {style}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pa-section">
+            <label className="pa-label">📊 Visual Density</label>
+            <div className="pa-density-group">
+              {PA_DENSITIES.map(d => (
+                <button
+                  key={d}
+                  className={`pa-density-btn ${paDensity === d ? 'active' : ''}`}
+                  onClick={() => setPaDensity(d)}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pa-section">
+            <label className="pa-label">🎨 Color Palette & Mood</label>
+            <input
+              type="text"
+              className="pa-input"
+              value={paColors}
+              onChange={(e) => setPaColors(e.target.value)}
+              placeholder="e.g. Earth tones, soft lighting, accents of gold..."
+            />
+            <p className="pa-hint">Describe the colors, lighting, and atmosphere you want.</p>
+          </div>
+
+          <button
+            className="pa-generate-btn"
+            onClick={generatePrimaryPrompt}
+            disabled={paIsGenerating}
+          >
+            {paIsGenerating ? '⏳ Crafting Prompt...' : '✨ Generate Prompt'}
+          </button>
+
+          <div className="pa-info">
+            <span>ℹ️</span>
+            <p>Generated prompts are optimized for Midjourney v6. They include lighting, composition, and styling parameters automatically.</p>
+          </div>
+        </div>
+
+        {/* Results Panel */}
+        <div className="pa-results">
+          <h2>Current Prompt</h2>
+          
+          {paPrimaryPrompt ? (
+            <div className="pa-prompt-card">
+              <div className="pa-prompt-badges">
+                <span className="pa-badge primary">{paCategory}</span>
+                <span className="pa-badge">{paStyle}</span>
+                <span className="pa-badge">{paDensity} Density</span>
+              </div>
+
+              <div className="pa-prompt-section">
+                <label>PRIMARY PROMPT</label>
+                <div className="pa-prompt-text">{paPrimaryPrompt}</div>
+                <button className="pa-copy-btn" onClick={() => copyToClipboard(paPrimaryPrompt)}>
+                  📋 Copy Primary
+                </button>
+              </div>
+
+              {paSecondaryPrompt && (
+                <div className="pa-prompt-section">
+                  <label>SECONDARY PROMPT</label>
+                  <div className="pa-prompt-text">{paSecondaryPrompt}</div>
+                  <button className="pa-copy-btn" onClick={() => copyToClipboard(paSecondaryPrompt)}>
+                    📋 Copy Secondary
+                  </button>
+                </div>
+              )}
+
+              {!paShowSecondaryForm ? (
+                <button
+                  className="pa-secondary-btn"
+                  onClick={() => setPaShowSecondaryForm(true)}
+                >
+                  ✨ Generate Secondary Variant
+                </button>
+              ) : (
+                <div className="pa-refinement-form">
+                  <input
+                    type="text"
+                    className="pa-input"
+                    value={paRefinement}
+                    onChange={(e) => setPaRefinement(e.target.value)}
+                    placeholder="e.g. Make the furniture more deco inspired..."
+                  />
+                  <div className="pa-refinement-actions">
+                    <button
+                      className="pa-generate-btn small"
+                      onClick={generateSecondaryPrompt}
+                      disabled={paIsGeneratingSecondary || !paRefinement.trim()}
+                    >
+                      {paIsGeneratingSecondary ? '⏳ Generating...' : '✨ Generate'}
+                    </button>
+                    <button
+                      className="pa-cancel-btn"
+                      onClick={() => setPaShowSecondaryForm(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="pa-empty-state">
+              <span className="pa-empty-icon">✨</span>
+              <h3>No prompts yet</h3>
+              <p>Configure your settings and click generate to start creating.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderDNASlider = (label: string, value: number, leftLabel: string, rightLabel: string) => {
     const fiveScaleValue = convertToFiveScale(value);
@@ -636,6 +932,7 @@ const App: React.FC = () => {
             {view === 'category-complete' && renderCategoryCompleteContent()}
             {view === 'analysis' && renderAnalysisContent()}
             {view === 'admin' && renderAdminContent()}
+            {view === 'prompt-architect' && renderPromptArchitectContent()}
           </div>
         </main>
       </div>
