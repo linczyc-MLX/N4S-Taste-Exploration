@@ -493,11 +493,19 @@ const App: React.FC = () => {
                           <div className="admin-quad-images-list">
                             {[0, 1, 2, 3].map(idx => (
                               <div key={idx} className="admin-quad-image-row">
-                                <img 
-                                  src={getImageUrl(quad.quadId, idx)} 
-                                  alt={`${quad.quadId}_${idx}`}
-                                  className="admin-quad-thumb"
-                                />
+                                <div className="admin-thumb-container">
+                                  <img 
+                                    src={getImageUrl(quad.quadId, idx)} 
+                                    alt={`${quad.quadId}_${idx}`}
+                                    className="admin-quad-thumb"
+                                  />
+                                  <div className="admin-thumb-preview">
+                                    <img 
+                                      src={getImageUrl(quad.quadId, idx)} 
+                                      alt={`${quad.quadId}_${idx} preview`}
+                                    />
+                                  </div>
+                                </div>
                                 <span className="admin-quad-filename">{quad.quadId}_{idx}.png</span>
                               </div>
                             ))}
