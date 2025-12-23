@@ -77,6 +77,7 @@ const App: React.FC = () => {
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<string, boolean>>({});
   const [quadEnabledState, setQuadEnabledState] = useState<Record<string, boolean>>({});
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [hoverPreview, setHoverPreview] = useState<{url: string, x: number, y: number} | null>(null);
 
   // Load quad enabled state on mount
   useEffect(() => {
@@ -493,18 +494,25 @@ const App: React.FC = () => {
                           <div className="admin-quad-images-list">
                             {[0, 1, 2, 3].map(idx => (
                               <div key={idx} className="admin-quad-image-row">
-                                <div className="admin-thumb-container">
+                                <div 
+                                  className="admin-thumb-container"
+                                  onMouseEnter={(e) => setHoverPreview({
+                                    url: getImageUrl(quad.quadId, idx),
+                                    x: e.clientX + 20,
+                                    y: Math.min(e.clientY - 100, window.innerHeight - 320)
+                                  })}
+                                  onMouseMove={(e) => setHoverPreview({
+                                    url: getImageUrl(quad.quadId, idx),
+                                    x: e.clientX + 20,
+                                    y: Math.min(e.clientY - 100, window.innerHeight - 320)
+                                  })}
+                                  onMouseLeave={() => setHoverPreview(null)}
+                                >
                                   <img 
                                     src={getImageUrl(quad.quadId, idx)} 
                                     alt={`${quad.quadId}_${idx}`}
                                     className="admin-quad-thumb"
                                   />
-                                  <div className="admin-thumb-preview">
-                                    <img 
-                                      src={getImageUrl(quad.quadId, idx)} 
-                                      alt={`${quad.quadId}_${idx} preview`}
-                                    />
-                                  </div>
                                 </div>
                                 <span className="admin-quad-filename">{quad.quadId}_{idx}.png</span>
                               </div>
@@ -631,6 +639,18 @@ const App: React.FC = () => {
           </div>
         </main>
       </div>
+      {hoverPreview && (
+        <div 
+          className="admin-thumb-preview"
+          style={{ 
+            display: 'block',
+            left: hoverPreview.x, 
+            top: hoverPreview.y 
+          }}
+        >
+          <img src={hoverPreview.url} alt="Preview" />
+        </div>
+      )}
     </div>
   );
 };
