@@ -190,8 +190,6 @@ const App: React.FC = () => {
         const quad = quads[sel.quadId];
         if (!quad) return;
 
-        // "All work" (-1) and normal selections (0-3) count positively
-        // "None appeal" (-2) is excluded
         if (sel.selectedIndex >= -1 && sel.selectedIndex !== -2) {
           totalCT += quad.metadata.ct;
           totalML += quad.metadata.ml;
@@ -211,7 +209,6 @@ const App: React.FC = () => {
     const avgML = totalML / count;
     const avgWC = totalWC / count;
 
-    // Determine style label
     let styleLabel = '';
     if (avgCT <= 3) {
       styleLabel = avgWC <= 4 ? 'Contemporary Warm' : 'Contemporary Cool';
@@ -237,13 +234,11 @@ const App: React.FC = () => {
     };
   };
 
-  // Get current category info
   const getCurrentCategory = () => {
     if (!session?.currentCategory) return null;
     return CATEGORIES[session.currentCategory as keyof typeof CATEGORIES];
   };
 
-  // Get progress percentage
   const getOverallProgress = () => {
     if (!session) return 0;
     let total = 0, completed = 0;
@@ -254,7 +249,6 @@ const App: React.FC = () => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  // Check if all categories are complete
   const isAllComplete = () => {
     if (!session) return false;
     return categoryOrder.every(catId => {
@@ -263,19 +257,17 @@ const App: React.FC = () => {
     });
   };
 
-  // Check if category is complete
   const isCategoryComplete = (categoryId: string) => {
     if (!session) return false;
     const progress = session.progress[categoryId];
     return progress.completedQuads >= progress.totalQuads;
   };
 
-  // Handle image load error
   const handleImageError = (quadId: string, index: number) => {
     setImageLoadErrors(prev => ({ ...prev, [`${quadId}_${index}`]: true }));
   };
 
-  // Render sidebar (shared across all views)
+  // Render sidebar - NO X BUTTON
   const renderSidebar = () => (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -283,7 +275,6 @@ const App: React.FC = () => {
           <span className="sidebar-logo-icon">📋</span>
           <span>N4S</span>
         </div>
-        <button className="sidebar-close">×</button>
       </div>
       
       <nav className="sidebar-nav">
@@ -295,23 +286,21 @@ const App: React.FC = () => {
           return (
             <div 
               key={catId}
-              className={`sidebar-item ${isActive ? 'active' : ''} ${isComplete ? 'completed' : ''}`}
+              className={`sidebar-item ${isActive ? 'active' : ''}`}
               onClick={() => session && jumpToCategory(catId)}
             >
               <span className="sidebar-item-name">{cat.name}</span>
-              <span className="sidebar-item-check">
-                {isComplete ? '☑' : ''}
-              </span>
+              {isComplete && <span className="sidebar-item-check">☑</span>}
             </div>
           );
         })}
       </nav>
       
-      {/* Only show Complete when ALL categories are done */}
+      {/* Only show Complete button when ALL categories are done */}
       {isAllComplete() && (
         <div className="sidebar-footer">
           <button 
-            className="sidebar-complete-btn ready"
+            className="sidebar-complete-btn"
             onClick={() => setView('analysis')}
           >
             Complete
@@ -321,7 +310,7 @@ const App: React.FC = () => {
     </aside>
   );
 
-  // Render header banner (shared across all views)
+  // Render header banner
   const renderHeader = () => (
     <header className="top-banner">
       <div className="banner-left">
@@ -379,7 +368,6 @@ const App: React.FC = () => {
 
     return (
       <>
-        {/* Category Header */}
         <div className="category-header">
           <h2 className="category-title">{category.name}</h2>
           <span className="category-counter">
@@ -387,7 +375,6 @@ const App: React.FC = () => {
           </span>
         </div>
 
-        {/* Quad Card */}
         <div className="quad-card">
           <h3 className="quad-style-title">{currentQuad.title}</h3>
           <p className="quad-space-type">{currentQuad.subtitle}</p>
@@ -428,7 +415,6 @@ const App: React.FC = () => {
             Click the image that best represents your preference
           </p>
 
-          {/* Dual Skip Buttons with visible borders */}
           <div className="skip-buttons">
             <button className="btn-outline-success" onClick={() => handleSelection(-1)}>
               All of these work for me
@@ -468,7 +454,7 @@ const App: React.FC = () => {
         <div className="next-category">
           <span className="next-label">Next Category</span>
           <div className="next-category-info">
-            <span className="category-icon large">{category.icon}</span>
+            <span className="category-icon">{category.icon}</span>
             <div>
               <h3>{category.name}</h3>
               <p>{category.description}</p>
@@ -486,7 +472,7 @@ const App: React.FC = () => {
     );
   };
 
-  // Render DNA slider component
+  // Render DNA slider
   const renderDNASlider = (
     label: string,
     value: number,
@@ -529,12 +515,10 @@ const App: React.FC = () => {
     const metrics = calculateStyleMetrics();
     if (!session || !metrics) return null;
 
-    // Get top regions
     const topRegions = Object.entries(metrics.regionPreferences)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    // Get top materials
     const topMaterials = Object.entries(metrics.materialPreferences)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8);
@@ -548,39 +532,19 @@ const App: React.FC = () => {
           </p>
         </header>
 
-        {/* Style Label */}
         <div className="style-label-card">
           <h2>{metrics.styleLabel}</h2>
           <p>Your overall design aesthetic</p>
         </div>
 
-        {/* Design DNA Sliders */}
         <div className="design-dna-section">
           <h3>Design DNA</h3>
           
-          {renderDNASlider(
-            'Style Era',
-            metrics.avgCT,
-            'Contemporary',
-            'Traditional'
-          )}
-          
-          {renderDNASlider(
-            'Material Complexity',
-            metrics.avgML,
-            'Minimal',
-            'Layered'
-          )}
-          
-          {renderDNASlider(
-            'Color Temperature',
-            metrics.avgWC,
-            'Warm',
-            'Cool'
-          )}
+          {renderDNASlider('Style Era', metrics.avgCT, 'Contemporary', 'Traditional')}
+          {renderDNASlider('Material Complexity', metrics.avgML, 'Minimal', 'Layered')}
+          {renderDNASlider('Color Temperature', metrics.avgWC, 'Warm', 'Cool')}
         </div>
 
-        {/* Preferences */}
         <div className="preferences-section">
           <div className="preference-card">
             <h3>Regional Influences</h3>
@@ -606,10 +570,8 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="analysis-actions">
           <button className="btn-primary" onClick={() => {
-            // Export results
             const exportData = {
               session,
               metrics: {
@@ -641,7 +603,6 @@ const App: React.FC = () => {
     );
   };
 
-  // Main render - ALL views now use the same layout with sidebar + header
   return (
     <div className="app">
       <div className="app-layout">
