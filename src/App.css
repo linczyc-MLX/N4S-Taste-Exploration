@@ -948,12 +948,10 @@
 
 .admin-quad-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
   background: #f8f7f5;
   border-radius: 6px;
   border: 1px solid #e0dcd5;
+  overflow: hidden;
 }
 
 .admin-quad-item.disabled {
@@ -961,26 +959,76 @@
   background: #f0f0f0;
 }
 
-.admin-quad-info {
+.admin-quad-images-list {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-width: 0;
+}
+
+.admin-quad-image-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.admin-quad-image-row:last-child {
+  border-bottom: none;
+}
+
+.admin-quad-thumb {
+  width: 36px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid #d0d0d0;
+  flex-shrink: 0;
+}
+
+.admin-quad-filename {
+  font-size: 12px;
+  font-family: monospace;
+  color: #4a4a4a;
+}
+
+.admin-quad-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 14px;
+  background: #f0ece5;
+  border-left: 1px solid #e0dcd5;
+  min-width: 140px;
+}
+
+.admin-quad-info {
+  text-align: center;
+  margin-bottom: 10px;
 }
 
 .admin-quad-title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   color: #1a1a1a;
   margin-bottom: 2px;
 }
 
 .admin-quad-subtitle {
-  font-size: 12px;
+  font-size: 11px;
   color: #757575;
+  margin-bottom: 2px;
 }
 
 .admin-quad-id {
-  font-size: 11px;
+  font-size: 10px;
   color: #9a9a9a;
   font-family: monospace;
+  background: #e0dcd5;
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 /* Toggle Switch */

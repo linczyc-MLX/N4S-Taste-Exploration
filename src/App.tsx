@@ -438,12 +438,16 @@ const App: React.FC = () => {
             <span className="admin-stat-value">{totalQuads}</span>
           </div>
           <div className="admin-stat">
-            <span className="admin-stat-label">Enabled</span>
+            <span className="admin-stat-label">Enabled Quads</span>
             <span className="admin-stat-value">{totalEnabled}</span>
           </div>
           <div className="admin-stat">
-            <span className="admin-stat-label">Disabled</span>
+            <span className="admin-stat-label">Disabled Quads</span>
             <span className={`admin-stat-value ${disabledCount > 0 ? 'warning' : ''}`}>{disabledCount}</span>
+          </div>
+          <div className="admin-stat">
+            <span className="admin-stat-label">Total Images</span>
+            <span className="admin-stat-value">{totalEnabled * 4}</span>
           </div>
         </div>
 
@@ -460,7 +464,7 @@ const App: React.FC = () => {
                   <div>
                     <span className="admin-category-title">{cat.name}</span>
                     <span className="admin-category-count">
-                      {' '}— <span className="enabled">{enabledCount}</span> of {categoryQuads.length} enabled
+                      {' '}— <span className="enabled">{enabledCount}</span> of {categoryQuads.length} quads enabled ({enabledCount * 4} images)
                     </span>
                   </div>
                   <div className="admin-category-toggle">
@@ -486,19 +490,33 @@ const App: React.FC = () => {
                       const isEnabled = quadEnabledState[quad.quadId] !== false;
                       return (
                         <div key={quad.quadId} className={`admin-quad-item ${!isEnabled ? 'disabled' : ''}`}>
-                          <div className="admin-quad-info">
-                            <div className="admin-quad-title">{quad.title}</div>
-                            <div className="admin-quad-subtitle">{quad.subtitle}</div>
-                            <div className="admin-quad-id">{quad.quadId}</div>
+                          <div className="admin-quad-images-list">
+                            {[0, 1, 2, 3].map(idx => (
+                              <div key={idx} className="admin-quad-image-row">
+                                <img 
+                                  src={getImageUrl(quad.quadId, idx)} 
+                                  alt={`${quad.quadId}_${idx}`}
+                                  className="admin-quad-thumb"
+                                />
+                                <span className="admin-quad-filename">{quad.quadId}_{idx}.png</span>
+                              </div>
+                            ))}
                           </div>
-                          <label className="toggle-switch">
-                            <input 
-                              type="checkbox" 
-                              checked={isEnabled}
-                              onChange={() => toggleQuad(quad.quadId)}
-                            />
-                            <span className="toggle-slider"></span>
-                          </label>
+                          <div className="admin-quad-right">
+                            <div className="admin-quad-info">
+                              <div className="admin-quad-title">{quad.title}</div>
+                              <div className="admin-quad-subtitle">{quad.subtitle}</div>
+                              <span className="admin-quad-id">{quad.quadId}</span>
+                            </div>
+                            <label className="toggle-switch">
+                              <input 
+                                type="checkbox" 
+                                checked={isEnabled}
+                                onChange={() => toggleQuad(quad.quadId)}
+                              />
+                              <span className="toggle-slider"></span>
+                            </label>
+                          </div>
                         </div>
                       );
                     })}
