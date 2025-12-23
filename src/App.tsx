@@ -168,6 +168,7 @@ const App: React.FC = () => {
     });
     setCurrentQuads(categoryQuads);
     setQuadStartTime(Date.now());
+    setView('exploration');
   };
 
   // Continue to next category
@@ -253,6 +254,15 @@ const App: React.FC = () => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
+  // Check if all categories are complete
+  const isAllComplete = () => {
+    if (!session) return false;
+    return categoryOrder.every(catId => {
+      const progress = session.progress[catId];
+      return progress.completedQuads >= progress.totalQuads;
+    });
+  };
+
   // Check if category is complete
   const isCategoryComplete = (categoryId: string) => {
     if (!session) return false;
@@ -265,189 +275,176 @@ const App: React.FC = () => {
     setImageLoadErrors(prev => ({ ...prev, [`${quadId}_${index}`]: true }));
   };
 
-  // Render welcome screen
-  const renderWelcome = () => (
-    <div className="welcome-screen">
-      <div className="welcome-content">
-        <div className="welcome-logo">N4S</div>
-        <h1>Taste Exploration</h1>
-        <p className="welcome-subtitle">
-          Discover your design preferences through a curated visual journey
-        </p>
-        
-        <div className="welcome-info">
-          <div className="info-item">
-            <span className="info-icon">🖼️</span>
-            <span>110 curated design quads</span>
-          </div>
-          <div className="info-item">
-            <span className="info-icon">📂</span>
-            <span>10 categories from living to landscape</span>
-          </div>
-          <div className="info-item">
-            <span className="info-icon">⏱️</span>
-            <span>Approximately 20-30 minutes</span>
-          </div>
+  // Render sidebar (shared across all views)
+  const renderSidebar = () => (
+    <aside className="sidebar">
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <span className="sidebar-logo-icon">📋</span>
+          <span>N4S</span>
         </div>
-
-        <div className="welcome-actions">
-          <button className="btn-primary" onClick={startExploration}>
-            Begin Exploration
+        <button className="sidebar-close">×</button>
+      </div>
+      
+      <nav className="sidebar-nav">
+        {categoryOrder.map(catId => {
+          const cat = CATEGORIES[catId as keyof typeof CATEGORIES];
+          const isComplete = session ? isCategoryComplete(catId) : false;
+          const isActive = session?.currentCategory === catId && view === 'exploration';
+          
+          return (
+            <div 
+              key={catId}
+              className={`sidebar-item ${isActive ? 'active' : ''} ${isComplete ? 'completed' : ''}`}
+              onClick={() => session && jumpToCategory(catId)}
+            >
+              <span className="sidebar-item-name">{cat.name}</span>
+              <span className="sidebar-item-check">
+                {isComplete ? '☑' : ''}
+              </span>
+            </div>
+          );
+        })}
+      </nav>
+      
+      {/* Only show Complete when ALL categories are done */}
+      {isAllComplete() && (
+        <div className="sidebar-footer">
+          <button 
+            className="sidebar-complete-btn ready"
+            onClick={() => setView('analysis')}
+          >
+            Complete
           </button>
-          {session && !session.completedAt && (
-            <button className="btn-secondary" onClick={resumeExploration}>
-              Resume ({getOverallProgress()}% complete)
-            </button>
-          )}
         </div>
+      )}
+    </aside>
+  );
+
+  // Render header banner (shared across all views)
+  const renderHeader = () => (
+    <header className="top-banner">
+      <div className="banner-left">
+        <div className="banner-title">Welcome to N4S</div>
+        <div className="banner-subtitle">Ultra-Luxury Residential Advisory Platform</div>
+      </div>
+      <div className="banner-right">Taste Exploration</div>
+    </header>
+  );
+
+  // Render welcome content
+  const renderWelcomeContent = () => (
+    <div className="welcome-container">
+      <h1>Begin Your Design Journey</h1>
+      <p className="welcome-subtitle">
+        Discover your design preferences through a curated visual journey
+      </p>
+      
+      <div className="welcome-info">
+        <div className="info-item">
+          <span className="info-icon">🖼️</span>
+          <span>110 curated design quads</span>
+        </div>
+        <div className="info-item">
+          <span className="info-icon">📂</span>
+          <span>10 categories from living to landscape</span>
+        </div>
+        <div className="info-item">
+          <span className="info-icon">⏱️</span>
+          <span>Approximately 20-30 minutes</span>
+        </div>
+      </div>
+
+      <div className="welcome-actions">
+        <button className="btn-primary" onClick={startExploration}>
+          Begin Exploration
+        </button>
+        {session && !session.completedAt && (
+          <button className="btn-secondary" onClick={resumeExploration}>
+            Resume ({getOverallProgress()}% complete)
+          </button>
+        )}
       </div>
     </div>
   );
 
-  // Render exploration screen
-  const renderExploration = () => {
+  // Render exploration content
+  const renderExplorationContent = () => {
     if (!session || !session.currentCategory) return null;
     
     const currentQuad = currentQuads[session.currentQuadIndex || 0];
     const category = getCurrentCategory();
-    const catProgress = session.progress[session.currentCategory];
     
     if (!currentQuad || !category) return null;
 
     return (
-      <div className="exploration-screen">
-        {/* Left Sidebar */}
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <div className="sidebar-logo">
-              <span className="sidebar-logo-icon">📋</span>
-              <span>N4S</span>
-            </div>
-            <button className="sidebar-close">×</button>
-          </div>
+      <>
+        {/* Category Header */}
+        <div className="category-header">
+          <h2 className="category-title">{category.name}</h2>
+          <span className="category-counter">
+            {(session.currentQuadIndex || 0) + 1} of {currentQuads.length}
+          </span>
+        </div>
+
+        {/* Quad Card */}
+        <div className="quad-card">
+          <h3 className="quad-style-title">{currentQuad.title}</h3>
+          <p className="quad-space-type">{currentQuad.subtitle}</p>
           
-          <nav className="sidebar-nav">
-            {categoryOrder.map(catId => {
-              const cat = CATEGORIES[catId as keyof typeof CATEGORIES];
-              const isComplete = isCategoryComplete(catId);
-              const isActive = catId === session.currentCategory;
-              const progress = session.progress[catId];
+          <div className="quad-grid">
+            {[0, 1, 2, 3].map(index => {
+              const imageKey = `${currentQuad.quadId}_${index}`;
+              const hasError = imageLoadErrors[imageKey];
               
               return (
-                <div 
-                  key={catId}
-                  className={`sidebar-item ${isActive ? 'active' : ''} ${isComplete ? 'completed' : ''}`}
-                  onClick={() => jumpToCategory(catId)}
+                <button
+                  key={index}
+                  className="quad-image-btn"
+                  onClick={() => handleSelection(index)}
+                  disabled={hasError}
                 >
-                  <span className="sidebar-item-name">{cat.name}</span>
-                  <span className="sidebar-item-check">
-                    {isComplete ? '☑' : ''}
-                  </span>
-                  {isActive && progress.completedQuads > 0 && !isComplete && (
-                    <div 
-                      className="sidebar-item-progress" 
-                      style={{ 
-                        height: `${(progress.completedQuads / progress.totalQuads) * 100}%` 
-                      }}
+                  {hasError ? (
+                    <div className="image-error">
+                      <span>Image unavailable</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={getImageUrl(currentQuad.quadId, index)}
+                      alt={`${currentQuad.title} option ${index + 1}`}
+                      loading="lazy"
+                      onError={() => handleImageError(currentQuad.quadId, index)}
                     />
                   )}
-                </div>
+                  <div className="image-overlay">
+                    <span className="select-label">Select</span>
+                  </div>
+                </button>
               );
             })}
-          </nav>
-          
-          <div className="sidebar-footer">
-            <button 
-              className="sidebar-complete-btn"
-              onClick={() => {
-                if (session.completedAt || getOverallProgress() === 100) {
-                  setView('analysis');
-                }
-              }}
-            >
-              Complete
+          </div>
+
+          <p className="selection-hint">
+            Click the image that best represents your preference
+          </p>
+
+          {/* Dual Skip Buttons with visible borders */}
+          <div className="skip-buttons">
+            <button className="btn-outline-success" onClick={() => handleSelection(-1)}>
+              All of these work for me
+            </button>
+            <span className="skip-divider">or</span>
+            <button className="btn-outline-danger" onClick={() => handleSelection(-2)}>
+              None of these appeal to me
             </button>
           </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="main-content">
-          {/* Top Banner */}
-          <header className="top-banner">
-            <div className="banner-left">
-              <div className="banner-title">Welcome to N4S</div>
-              <div className="banner-subtitle">Ultra-Luxury Residential Advisory Platform</div>
-            </div>
-            <div className="banner-right">Taste Exploration</div>
-          </header>
-
-          {/* Category Header */}
-          <div className="category-header">
-            <h2 className="category-title">{category.name}</h2>
-            <span className="category-counter">
-              {(session.currentQuadIndex || 0) + 1} of {currentQuads.length}
-            </span>
-          </div>
-
-          {/* Quad Card */}
-          <div className="quad-card">
-            <h3 className="quad-style-title">{currentQuad.title}</h3>
-            <p className="quad-space-type">{currentQuad.subtitle}</p>
-            
-            <div className="quad-grid">
-              {[0, 1, 2, 3].map(index => {
-                const imageKey = `${currentQuad.quadId}_${index}`;
-                const hasError = imageLoadErrors[imageKey];
-                
-                return (
-                  <button
-                    key={index}
-                    className="quad-image-btn"
-                    onClick={() => handleSelection(index)}
-                    disabled={hasError}
-                  >
-                    {hasError ? (
-                      <div className="image-error">
-                        <span>Image unavailable</span>
-                      </div>
-                    ) : (
-                      <img
-                        src={getImageUrl(currentQuad.quadId, index)}
-                        alt={`${currentQuad.title} option ${index + 1}`}
-                        loading="lazy"
-                        onError={() => handleImageError(currentQuad.quadId, index)}
-                      />
-                    )}
-                    <div className="image-overlay">
-                      <span className="select-label">Select</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="selection-hint">
-              Click the image that best represents your preference
-            </p>
-
-            {/* Dual Skip Buttons */}
-            <div className="skip-buttons">
-              <button className="btn-outline-success" onClick={() => handleSelection(-1)}>
-                All of these work for me
-              </button>
-              <span className="skip-divider">or</span>
-              <button className="btn-outline-danger" onClick={() => handleSelection(-2)}>
-                None of these appeal to me
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </>
     );
   };
 
-  // Render category complete screen
-  const renderCategoryComplete = () => {
+  // Render category complete content
+  const renderCategoryCompleteContent = () => {
     if (!session?.currentCategory) return null;
     
     const category = getCurrentCategory();
@@ -459,34 +456,32 @@ const App: React.FC = () => {
     if (!category) return null;
 
     return (
-      <div className="category-complete-screen">
-        <div className="complete-content">
-          <div className="complete-icon">✓</div>
-          {prevCategory && (
-            <h2>{prevCategory.name} Complete!</h2>
-          )}
-          <p className="complete-progress">
-            {getOverallProgress()}% of exploration complete
-          </p>
-          
-          <div className="next-category">
-            <span className="next-label">Next Category</span>
-            <div className="next-category-info">
-              <span className="category-icon large">{category.icon}</span>
-              <div>
-                <h3>{category.name}</h3>
-                <p>{category.description}</p>
-                <span className="quad-count">
-                  {session.progress[session.currentCategory].totalQuads} selections
-                </span>
-              </div>
+      <div className="category-complete-container">
+        <div className="complete-icon">✓</div>
+        {prevCategory && (
+          <h2>{prevCategory.name} Complete!</h2>
+        )}
+        <p className="complete-progress">
+          {getOverallProgress()}% of exploration complete
+        </p>
+        
+        <div className="next-category">
+          <span className="next-label">Next Category</span>
+          <div className="next-category-info">
+            <span className="category-icon large">{category.icon}</span>
+            <div>
+              <h3>{category.name}</h3>
+              <p>{category.description}</p>
+              <span className="quad-count">
+                {session.progress[session.currentCategory].totalQuads} selections
+              </span>
             </div>
           </div>
-
-          <button className="btn-primary" onClick={continueToNextCategory}>
-            Continue to {category.name}
-          </button>
         </div>
+
+        <button className="btn-primary" onClick={continueToNextCategory}>
+          Continue to {category.name}
+        </button>
       </div>
     );
   };
@@ -529,8 +524,8 @@ const App: React.FC = () => {
     );
   };
 
-  // Render analysis screen
-  const renderAnalysis = () => {
+  // Render analysis content
+  const renderAnalysisContent = () => {
     const metrics = calculateStyleMetrics();
     if (!session || !metrics) return null;
 
@@ -545,7 +540,7 @@ const App: React.FC = () => {
       .slice(0, 8);
 
     return (
-      <div className="analysis-screen">
+      <div className="analysis-container">
         <header className="analysis-header">
           <h1>Your Design Profile</h1>
           <p className="analysis-subtitle">
@@ -553,108 +548,114 @@ const App: React.FC = () => {
           </p>
         </header>
 
-        <div className="analysis-content">
-          {/* Style Label */}
-          <div className="style-label-card">
-            <h2>{metrics.styleLabel}</h2>
-            <p>Your overall design aesthetic</p>
-          </div>
+        {/* Style Label */}
+        <div className="style-label-card">
+          <h2>{metrics.styleLabel}</h2>
+          <p>Your overall design aesthetic</p>
+        </div>
 
-          {/* Design DNA Sliders */}
-          <div className="design-dna-section">
-            <h3>Design DNA</h3>
-            
-            {renderDNASlider(
-              'Style Era',
-              metrics.avgCT,
-              'Contemporary',
-              'Traditional'
-            )}
-            
-            {renderDNASlider(
-              'Material Complexity',
-              metrics.avgML,
-              'Minimal',
-              'Layered'
-            )}
-            
-            {renderDNASlider(
-              'Color Temperature',
-              metrics.avgWC,
-              'Warm',
-              'Cool'
-            )}
-          </div>
+        {/* Design DNA Sliders */}
+        <div className="design-dna-section">
+          <h3>Design DNA</h3>
+          
+          {renderDNASlider(
+            'Style Era',
+            metrics.avgCT,
+            'Contemporary',
+            'Traditional'
+          )}
+          
+          {renderDNASlider(
+            'Material Complexity',
+            metrics.avgML,
+            'Minimal',
+            'Layered'
+          )}
+          
+          {renderDNASlider(
+            'Color Temperature',
+            metrics.avgWC,
+            'Warm',
+            'Cool'
+          )}
+        </div>
 
-          {/* Preferences */}
-          <div className="preferences-section">
-            <div className="preference-card">
-              <h3>Regional Influences</h3>
-              <div className="preference-list">
-                {topRegions.map(([region, count]) => (
-                  <div key={region} className="preference-item">
-                    <span className="preference-name">{region.replace(/_/g, ' ')}</span>
-                    <span className="preference-count">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="preference-card">
-              <h3>Material Preferences</h3>
-              <div className="preference-tags">
-                {topMaterials.map(([material, count]) => (
-                  <span key={material} className="preference-tag">
-                    {material.replace(/_/g, ' ')} ({count})
-                  </span>
-                ))}
-              </div>
+        {/* Preferences */}
+        <div className="preferences-section">
+          <div className="preference-card">
+            <h3>Regional Influences</h3>
+            <div className="preference-list">
+              {topRegions.map(([region, count]) => (
+                <div key={region} className="preference-item">
+                  <span className="preference-name">{region.replace(/_/g, ' ')}</span>
+                  <span className="preference-count">{count}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="analysis-actions">
-            <button className="btn-primary" onClick={() => {
-              // Export results
-              const exportData = {
-                session,
-                metrics: {
-                  ...metrics,
-                  ctScale5: convertToFiveScale(metrics.avgCT),
-                  mlScale5: convertToFiveScale(metrics.avgML),
-                  wcScale5: convertToFiveScale(metrics.avgWC)
-                },
-                exportedAt: new Date().toISOString()
-              };
-              const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `taste-profile-${session.sessionId}.json`;
-              link.click();
-            }}>
-              Export Results
-            </button>
-            <button className="btn-secondary" onClick={() => {
-              localStorage.removeItem(`${SESSION_CONFIG.storageKeyPrefix}current_session`);
-              setSession(null);
-              setView('welcome');
-            }}>
-              Start New Session
-            </button>
+          <div className="preference-card">
+            <h3>Material Preferences</h3>
+            <div className="preference-tags">
+              {topMaterials.map(([material, count]) => (
+                <span key={material} className="preference-tag">
+                  {material.replace(/_/g, ' ')} ({count})
+                </span>
+              ))}
+            </div>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="analysis-actions">
+          <button className="btn-primary" onClick={() => {
+            // Export results
+            const exportData = {
+              session,
+              metrics: {
+                ...metrics,
+                ctScale5: convertToFiveScale(metrics.avgCT),
+                mlScale5: convertToFiveScale(metrics.avgML),
+                wcScale5: convertToFiveScale(metrics.avgWC)
+              },
+              exportedAt: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `taste-profile-${session.sessionId}.json`;
+            link.click();
+          }}>
+            Export Results
+          </button>
+          <button className="btn-secondary" onClick={() => {
+            localStorage.removeItem(`${SESSION_CONFIG.storageKeyPrefix}current_session`);
+            setSession(null);
+            setView('welcome');
+          }}>
+            Start New Session
+          </button>
         </div>
       </div>
     );
   };
 
-  // Main render
+  // Main render - ALL views now use the same layout with sidebar + header
   return (
     <div className="app">
-      {view === 'welcome' && renderWelcome()}
-      {view === 'exploration' && renderExploration()}
-      {view === 'category-complete' && renderCategoryComplete()}
-      {view === 'analysis' && renderAnalysis()}
+      <div className="app-layout">
+        {renderSidebar()}
+        <main className="main-content">
+          {renderHeader()}
+          <div className="page-content">
+            {view === 'welcome' && renderWelcomeContent()}
+            {view === 'exploration' && renderExplorationContent()}
+            {view === 'category-complete' && renderCategoryCompleteContent()}
+            {view === 'analysis' && renderAnalysisContent()}
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

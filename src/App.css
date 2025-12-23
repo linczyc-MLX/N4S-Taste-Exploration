@@ -47,115 +47,46 @@
   color: var(--color-text-light);
 }
 
-/* Outlined skip buttons */
+/* Skip buttons with visible colored borders */
 .btn-outline-success {
-  background: transparent;
-  color: var(--color-success);
-  border: 2px solid var(--color-success);
-  padding: 10px 20px;
+  background: white;
+  color: #2e7d32;
+  border: 3px solid #2e7d32;
+  padding: 12px 24px;
   border-radius: var(--border-radius-sm);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
 }
 
 .btn-outline-success:hover {
-  background: var(--color-success);
-  color: var(--color-text-light);
+  background: #2e7d32;
+  color: white;
 }
 
 .btn-outline-danger {
-  background: transparent;
-  color: var(--color-error);
-  border: 2px solid var(--color-error);
-  padding: 10px 20px;
+  background: white;
+  color: #c62828;
+  border: 3px solid #c62828;
+  padding: 12px 24px;
   border-radius: var(--border-radius-sm);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
 }
 
 .btn-outline-danger:hover {
-  background: var(--color-error);
-  color: var(--color-text-light);
+  background: #c62828;
+  color: white;
 }
 
 /* ============================================
-   WELCOME SCREEN
+   SHARED LAYOUT - SIDEBAR + HEADER
    ============================================ */
 
-.welcome-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  background: var(--color-bg-primary);
-}
-
-.welcome-content {
-  text-align: center;
-  max-width: 600px;
-}
-
-.welcome-logo {
-  font-family: var(--font-heading);
-  font-size: 56px;
-  font-weight: 700;
-  color: var(--color-navy);
-  margin-bottom: 8px;
-  letter-spacing: 2px;
-}
-
-.welcome-content h1 {
-  font-size: 36px;
-  color: var(--color-navy);
-  margin-bottom: 16px;
-}
-
-.welcome-subtitle {
-  font-size: 18px;
-  color: var(--color-text-secondary);
-  margin-bottom: 40px;
-}
-
-.welcome-info {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 40px;
-  text-align: left;
-  background: var(--color-bg-card);
-  padding: 24px;
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--color-text-secondary);
-}
-
-.info-icon {
-  font-size: 24px;
-}
-
-.welcome-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* ============================================
-   EXPLORATION SCREEN - N4S DASHBOARD STYLE
-   ============================================ */
-
-.exploration-screen {
+.app-layout {
   min-height: 100vh;
   display: flex;
   background: var(--color-bg-primary);
@@ -200,7 +131,7 @@
   background: transparent;
   border: none;
   color: var(--color-text-light);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   opacity: 0.7;
   width: 28px;
@@ -259,15 +190,7 @@
   font-size: 14px;
 }
 
-.sidebar-item-progress {
-  width: 4px;
-  background: var(--color-accent);
-  margin-left: 8px;
-  border-radius: 2px;
-  align-self: stretch;
-}
-
-/* Complete Button */
+/* Complete Button - only visible when all done */
 .sidebar-footer {
   padding: 16px;
   border-top: 1px solid var(--color-navy-light);
@@ -283,9 +206,15 @@
   cursor: pointer;
   text-align: left;
   transition: background var(--transition);
+  opacity: 0.5;
 }
 
-.sidebar-complete-btn:hover {
+.sidebar-complete-btn.ready {
+  opacity: 1;
+  color: var(--color-accent);
+}
+
+.sidebar-complete-btn.ready:hover {
   background: var(--color-navy-light);
 }
 
@@ -301,7 +230,7 @@
 /* Top Header Banner */
 .top-banner {
   background: var(--color-navy);
-  padding: 20px 32px;
+  padding: 24px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -314,41 +243,104 @@
 
 .banner-title {
   font-family: var(--font-heading);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--color-text-light);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .banner-subtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
 }
 
 .banner-right {
   font-family: var(--font-heading);
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 600;
   color: var(--color-accent);
 }
+
+/* Page Content */
+.page-content {
+  flex: 1;
+  padding: 24px 40px;
+}
+
+/* ============================================
+   WELCOME SCREEN (with sidebar + header)
+   ============================================ */
+
+.welcome-container {
+  max-width: 600px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.welcome-container h1 {
+  font-size: 32px;
+  color: var(--color-navy);
+  margin-bottom: 16px;
+}
+
+.welcome-subtitle {
+  font-size: 18px;
+  color: var(--color-text-secondary);
+  margin-bottom: 40px;
+}
+
+.welcome-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 40px;
+  text-align: left;
+  background: var(--color-bg-card);
+  padding: 24px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-secondary);
+}
+
+.info-icon {
+  font-size: 24px;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ============================================
+   EXPLORATION SCREEN
+   ============================================ */
 
 /* Category Header */
 .category-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 32px;
+  margin-bottom: 24px;
 }
 
 .category-title {
   font-family: var(--font-heading);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .category-counter {
-  font-size: 18px;
+  font-size: 20px;
   color: var(--color-text-secondary);
 }
 
@@ -356,8 +348,7 @@
 .quad-card {
   background: var(--color-bg-card);
   border-radius: var(--border-radius-lg);
-  margin: 0 32px 32px;
-  padding: 32px;
+  padding: 32px 40px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
@@ -366,7 +357,7 @@
 
 .quad-style-title {
   font-family: var(--font-heading);
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 4px;
@@ -374,26 +365,26 @@
 }
 
 .quad-space-type {
-  font-size: 16px;
+  font-size: 18px;
   color: var(--color-text-muted);
   margin-bottom: 24px;
   text-align: center;
 }
 
-/* Quad Grid */
+/* Quad Grid - LARGER IMAGES */
 .quad-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 16px;
   width: 100%;
-  max-width: 700px;
+  max-width: 900px;
   margin-bottom: 24px;
 }
 
 .quad-image-btn {
   position: relative;
   background: var(--color-bg-input);
-  border: 3px solid transparent;
+  border: 3px solid var(--color-border);
   border-radius: var(--border-radius-sm);
   overflow: hidden;
   cursor: pointer;
@@ -404,7 +395,7 @@
 
 .quad-image-btn:hover {
   border-color: var(--color-accent);
-  transform: scale(1.02);
+  transform: scale(1.01);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
@@ -429,7 +420,7 @@
   background: var(--color-bg-input);
   color: var(--color-text-muted);
   font-size: 14px;
-  min-height: 150px;
+  min-height: 200px;
 }
 
 .image-overlay {
@@ -449,12 +440,12 @@
 .select-label {
   color: white;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 18px;
   opacity: 0;
   transform: translateY(10px);
   transition: all var(--transition);
   background: var(--color-accent);
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: var(--border-radius-sm);
 }
 
@@ -466,15 +457,15 @@
 /* Selection Hint */
 .selection-hint {
   color: var(--color-text-muted);
-  font-size: 14px;
-  margin-bottom: 20px;
+  font-size: 15px;
+  margin-bottom: 24px;
 }
 
 /* Skip Buttons */
 .skip-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .skip-divider {
@@ -486,18 +477,10 @@
    CATEGORY COMPLETE SCREEN
    ============================================ */
 
-.category-complete-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  background: var(--color-bg-primary);
-}
-
-.complete-content {
-  text-align: center;
+.category-complete-container {
   max-width: 500px;
+  margin: 60px auto;
+  text-align: center;
 }
 
 .complete-icon {
@@ -513,7 +496,7 @@
   margin: 0 auto 24px;
 }
 
-.complete-content h2 {
+.category-complete-container h2 {
   font-size: 28px;
   margin-bottom: 8px;
 }
@@ -530,6 +513,7 @@
   margin-bottom: 32px;
   border: 1px solid var(--color-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  text-align: left;
 }
 
 .next-label {
@@ -545,7 +529,6 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  text-align: left;
 }
 
 .category-icon {
@@ -577,10 +560,9 @@
    ANALYSIS / DESIGN PROFILE SCREEN
    ============================================ */
 
-.analysis-screen {
-  min-height: 100vh;
-  padding: 40px 20px;
-  background: var(--color-bg-primary);
+.analysis-container {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .analysis-header {
@@ -595,11 +577,6 @@
 
 .analysis-subtitle {
   color: var(--color-text-muted);
-}
-
-.analysis-content {
-  max-width: 800px;
-  margin: 0 auto;
 }
 
 /* Style Label Card */
@@ -805,7 +782,11 @@
   }
   
   .banner-right {
-    font-size: 24px;
+    font-size: 28px;
+  }
+  
+  .quad-grid {
+    max-width: 700px;
   }
 }
 
@@ -816,7 +797,7 @@
   
   .sidebar-item-name,
   .sidebar-header .sidebar-logo span,
-  .sidebar-complete-btn {
+  .sidebar-footer {
     display: none;
   }
   
@@ -836,31 +817,22 @@
     font-size: 20px;
   }
   
-  .category-header {
-    padding: 16px 20px;
+  .page-content {
+    padding: 20px;
   }
   
   .quad-card {
-    margin: 0 16px 24px;
     padding: 20px;
+  }
+  
+  .quad-grid {
+    gap: 12px;
   }
 }
 
 @media (max-width: 600px) {
-  .welcome-content h1 {
-    font-size: 28px;
-  }
-  
-  .welcome-logo {
-    font-size: 42px;
-  }
-
-  .quad-grid {
-    gap: 8px;
-  }
-
   .quad-style-title {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .skip-buttons {
