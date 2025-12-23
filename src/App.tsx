@@ -301,10 +301,13 @@ const App: React.FC = () => {
   // Handle N4S logo click - different behavior based on current view
   const handleLogoClick = () => {
     if (view === 'prompt-architect') {
-      // From Prompt Architect, go back to previous taste exploration view
+      // From Prompt Architect, always go back to Admin
+      setView('admin');
+    } else if (view === 'admin') {
+      // From Admin, go back to where you were (Exploration)
       setView(previousView);
-    } else if (view === 'exploration' || view === 'admin') {
-      // From Taste Exploration (4 images) or Admin, go to KYC Design Preferences page
+    } else if (view === 'exploration') {
+      // From Taste Exploration (4 images), go to KYC Design Preferences page
       window.location.href = 'https://home-5019238456.app-ionos.space';
     }
   };
@@ -573,7 +576,7 @@ const App: React.FC = () => {
         <div className="admin-footer">
           <button 
             className="pa-launch-btn"
-            onClick={() => { setPreviousView('admin'); setView('prompt-architect'); }}
+            onClick={() => { setView('prompt-architect'); }}
           >
             ✨ Prompt Architect
           </button>
@@ -696,7 +699,7 @@ Format: Just return the raw prompt string, nothing else. Do not include Midjourn
           <h1>✨ AI Interior Architect</h1>
           <p className="pa-subtitle">Create sophisticated, detailed architectural prompts for Midjourney</p>
         </div>
-        <button className="admin-back-btn" onClick={() => setView(previousView)}>← Back</button>
+        <button className="admin-back-btn" onClick={() => setView('admin')}>← Back</button>
       </div>
 
       <div className="pa-layout">
