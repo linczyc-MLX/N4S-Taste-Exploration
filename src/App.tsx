@@ -298,10 +298,25 @@ const App: React.FC = () => {
     setImageLoadErrors(prev => ({ ...prev, [`${quadId}_${index}`]: true }));
   };
 
+  // Handle N4S logo click - different behavior based on current view
+  const handleLogoClick = () => {
+    if (view === 'prompt-architect') {
+      // From Prompt Architect, go back to previous taste exploration view
+      setView(previousView);
+    } else if (view === 'exploration') {
+      // From Taste Exploration (4 images), go to KYC Design Preferences page
+      window.location.href = 'https://home-5019238456.app-ionos.space';
+    }
+  };
+
   const renderSidebar = () => (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">
+        <div 
+          className="sidebar-logo" 
+          onClick={handleLogoClick}
+          style={{ cursor: (view === 'prompt-architect' || view === 'exploration') ? 'pointer' : 'default' }}
+        >
           <span className="sidebar-logo-icon">📋</span>
           <span>N4S</span>
         </div>
@@ -591,23 +606,15 @@ const App: React.FC = () => {
 
   const MIDJOURNEY_DEFAULTS = ' --ar 4:5 --style raw --s 250';
 
+  // Backend URL - Render production server
+  const API_URL = 'https://claude-backend-a0ur.onrender.com/api/claude';
+
   const generatePrimaryPrompt = async () => {
     setPaIsGenerating(true);
     setPaPrimaryPrompt('');
     setPaSecondaryPrompt('');
     
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `You are an expert Midjourney Prompt Engineer for interior architecture. 
+    const promptText = `You are an expert Midjourney Prompt Engineer for interior architecture. 
 Create a sophisticated, detailed Midjourney prompt based on these parameters:
 - Category: ${PA_CATEGORIES.find(c => c.code === paCategory)?.label}
 - Style: ${paStyle}
@@ -616,9 +623,15 @@ Create a sophisticated, detailed Midjourney prompt based on these parameters:
 
 Include details about lighting, textures, camera angle, and rendering style (e.g. '8k', 'unreal engine 5', 'photorealistic').
 
-Format: Just return the raw prompt string, nothing else. Do not include Midjourney parameters like --ar or --style.`
-          }]
-        })
+Format: Just return the raw prompt string, nothing else. Do not include Midjourney parameters like --ar or --style.`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: promptText })
       });
 
       const data = await response.json();
@@ -637,20 +650,9 @@ Format: Just return the raw prompt string, nothing else. Do not include Midjourn
     
     setPaIsGeneratingSecondary(true);
     
-    try {
-      const cleanPrimary = paPrimaryPrompt.replace(MIDJOURNEY_DEFAULTS, '').trim();
-      
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `You are an expert Midjourney Prompt Engineer for interior architecture.
+    const cleanPrimary = paPrimaryPrompt.replace(MIDJOURNEY_DEFAULTS, '').trim();
+    
+    const promptText = `You are an expert Midjourney Prompt Engineer for interior architecture.
 Create a secondary variant of the given prompt that maintains family resemblance but introduces subtle refinements.
 Keep the same general style and mood, but vary elements based on the refinement direction.
 The images should look related but explore different design directions.
@@ -659,9 +661,15 @@ Primary prompt: ${cleanPrimary}
 
 Refinement direction: ${paRefinement}
 
-Format: Just return the raw prompt string, nothing else. Do not include Midjourney parameters.`
-          }]
-        })
+Format: Just return the raw prompt string, nothing else. Do not include Midjourney parameters.`;
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: promptText })
       });
 
       const data = await response.json();
