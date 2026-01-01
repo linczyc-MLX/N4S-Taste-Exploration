@@ -1,21 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { TasteSession, TasteQuad, QuadSelection, CategoryProgress, AppView, StyleMetrics, PromptRecord, PromptStatus, GenerationMode, MatrixStats } from './types/tasteTypes';
-import { 
-  CATEGORIES, SESSION_CONFIG, getImageUrl, getSelectionCodes, getCodeValue, AS_LABELS, MP_LABELS, VD_LABELS,
-  ALL_STYLES, ALL_STYLE_CODES, QUAD_STYLES, QUAD_STYLE_CODES,
-  SHOWCASE_IMAGE_NUMBERS, IMAGE_VARIATIONS, STYLE_DESCRIPTIONS, CATEGORY_SCENE_DESCRIPTIONS,
-  generateShowcaseFilename, generateQuadFilename, getQuadPosition, getStyleNameFromCode,
-  generateShowcasePrompt, generateQuadPrompt, QUAD_MATRIX
-} from './config/tasteConfig';
-import { quads, categoryOrder, getQuadsByCategory, categories } from './data/quadMetadata';
+import React, { useState, useEffect, useCallback } from 'react';
+import { TasteSession, TasteQuad, QuadSelection, CategoryProgress, AppView, StyleMetrics } from './types/tasteTypes';
+import { CATEGORIES, SESSION_CONFIG, getImageUrl } from './config/tasteConfig';
+import { quads, categoryOrder, getQuadsByCategory } from './data/quadMetadata';
 import { TasteReportGenerator, ReportData, saveProfileToStorage, isCoupleAssessment, getPartnerClientId, getPartnerProfile } from './utils/reportGenerator';
 import './App.css';
-
-// Local constant for ArchiPrompt storage (defined locally, not imported)
-const ARCHIPROMPT_STORAGE_KEY = 'n4s_archiprompt_data';
-
-// Extended AppView to include 'admin' and 'prompt-architect'
-type ExtendedAppView = AppView | 'admin' | 'prompt-architect';
 
 const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -23,12 +11,45 @@ const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(
 const QUAD_STATE_KEY = 'n4s_quad_enabled_state';
 const CLIENT_ID_KEY = 'n4s_client_id';
 
+// Code labels for display
+const AS_LABELS: Record<string, string> = {
+  'AS1': 'Ultra Modern', 'AS2': 'Modern', 'AS3': 'Modern Classic',
+  'AS4': 'Transitional Modern', 'AS5': 'Transitional', 'AS6': 'Transitional Classic',
+  'AS7': 'Classic', 'AS8': 'Traditional', 'AS9': 'Grand Traditional'
+};
+
+const MP_LABELS: Record<string, string> = {
+  'MP1': 'Warm Earth', 'MP2': 'Warm', 'MP3': 'Warm Neutral',
+  'MP4': 'Balanced Warm', 'MP5': 'Neutral', 'MP6': 'Balanced Cool',
+  'MP7': 'Cool Neutral', 'MP8': 'Cool', 'MP9': 'Cool Crisp'
+};
+
+// Helper to extract numeric value from code (e.g., 'AS3' -> 3)
+const getCodeValue = (code: string): number => {
+  const match = code.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 5;
+};
+
+// Helper to get selection codes from quad metadata
+const getSelectionCodes = (quadId: string, selectedIndex: number): { style: string, vd: string, mp: string, AS: string, VD: string, MP: string } | null => {
+  const quad = quads[quadId];
+  if (!quad || !quad.images || !quad.images[selectedIndex]) return null;
+  const img = quad.images[selectedIndex];
+  return {
+    style: img.style || 'AS5',
+    vd: img.vd || 'VD5',
+    mp: img.mp || 'MP5',
+    AS: img.style || 'AS5',
+    VD: img.vd || 'VD5',
+    MP: img.mp || 'MP5'
+  };
+};
+
 const loadQuadEnabledState = (): Record<string, boolean> => {
   const stored = localStorage.getItem(QUAD_STATE_KEY);
   if (stored) {
     return JSON.parse(stored);
   }
-  // Default: all quads enabled
   const defaultState: Record<string, boolean> = {};
   Object.keys(quads).forEach(quadId => {
     defaultState[quadId] = quads[quadId].enabled;
@@ -40,7 +61,6 @@ const saveQuadEnabledState = (state: Record<string, boolean>) => {
   localStorage.setItem(QUAD_STATE_KEY, JSON.stringify(state));
 };
 
-// Get enabled quads for a category using custom state
 const getEnabledQuadsForCategory = (categoryId: string, enabledState: Record<string, boolean>): TasteQuad[] => {
   return getQuadsByCategory(categoryId).filter(q => enabledState[q.quadId] !== false);
 };
@@ -80,8 +100,7 @@ const convertToFiveScale = (value: number): number => {
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ExtendedAppView>('welcome');
-  const [previousView, setPreviousView] = useState<ExtendedAppView>('welcome');
+  const [view, setView] = useState<AppView>('welcome');
   const [session, setSession] = useState<TasteSession | null>(null);
   const [currentQuads, setCurrentQuads] = useState<TasteQuad[]>([]);
   const [quadStartTime, setQuadStartTime] = useState<number>(Date.now());
@@ -99,73 +118,6 @@ const App: React.FC = () => {
   
   // Return URL for KYC redirect flow
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
-  
-  // ArchiPrompt state
-  const [apMode, setApMode] = useState<GenerationMode>('quad');
-  const [apSelectedStyle, setApSelectedStyle] = useState<string>('Modern Classic');
-  const [apSelectedImageNum, setApSelectedImageNum] = useState<string>('01');
-  const [apSelectedCategory, setApSelectedCategory] = useState<string>('EA');
-  const [apSelectedQuadNum, setApSelectedQuadNum] = useState<string>('001');
-  const [apSelectedPosition, setApSelectedPosition] = useState<number>(0);
-  const [apPromptData, setApPromptData] = useState<Record<string, PromptRecord>>({});
-  const [apCurrentPrompt, setApCurrentPrompt] = useState<PromptRecord | null>(null);
-  const [apActiveTab, setApActiveTab] = useState<'generate' | 'checklist'>('generate');
-  const [apUploadModalOpen, setApUploadModalOpen] = useState(false);
-  const [apUploadFilename, setApUploadFilename] = useState('');
-  const [apUploadUrl, setApUploadUrl] = useState('');
-  const [apIsUploading, setApIsUploading] = useState(false);
-  const [apToast, setApToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
-
-  // Load ArchiPrompt data from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(ARCHIPROMPT_STORAGE_KEY);
-    if (stored) {
-      try {
-        setApPromptData(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse ArchiPrompt data:', e);
-      }
-    }
-  }, []);
-
-  // Save ArchiPrompt data to localStorage
-  useEffect(() => {
-    if (Object.keys(apPromptData).length > 0) {
-      localStorage.setItem(ARCHIPROMPT_STORAGE_KEY, JSON.stringify(apPromptData));
-    }
-  }, [apPromptData]);
-
-  // Auto-hide toast
-  useEffect(() => {
-    if (apToast) {
-      const timer = setTimeout(() => setApToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [apToast]);
-
-  // Computed filename code
-  const apFilenameCode = useMemo(() => {
-    if (apMode === 'showcase-exterior' || apMode === 'showcase-interior') {
-      const type = apMode === 'showcase-exterior' ? 'exterior' : 'interior';
-      return generateShowcaseFilename(type, ALL_STYLE_CODES[apSelectedStyle], apSelectedImageNum);
-    } else {
-      const pos = getQuadPosition(apSelectedQuadNum, apSelectedPosition);
-      if (!pos) return '';
-      return generateQuadFilename(apSelectedCategory, apSelectedQuadNum, apSelectedPosition, pos.style, pos.vd, pos.mp);
-    }
-  }, [apMode, apSelectedStyle, apSelectedImageNum, apSelectedCategory, apSelectedQuadNum, apSelectedPosition]);
-
-  // Computed stats
-  const apStats = useMemo((): MatrixStats => {
-    const records = Object.values(apPromptData);
-    return {
-      total: 198, // 54 showcase + 144 quad
-      pending: records.filter(r => r.status === 'pending').length,
-      inMidjourney: records.filter(r => r.status === 'in_midjourney').length,
-      selected: records.filter(r => r.status === 'selected').length,
-      uploaded: records.filter(r => r.status === 'uploaded').length,
-    };
-  }, [apPromptData]);
 
   // Load quad enabled state on mount
   useEffect(() => {
@@ -253,225 +205,6 @@ const App: React.FC = () => {
 
   const getTotalQuads = () => {
     return Object.keys(quads).length;
-  };
-
-  // ============================================
-  // ARCHIPROMPT FUNCTIONS
-  // ============================================
-
-  const STATUS_CYCLE: PromptStatus[] = ['not_generated', 'pending', 'in_midjourney', 'selected', 'uploaded'];
-
-  const apShowToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setApToast({ message, type });
-  };
-
-  const apCopyToClipboard = (text: string, label: string = 'Text') => {
-    navigator.clipboard.writeText(text);
-    apShowToast(`${label} copied to clipboard`);
-  };
-
-  const apGeneratePrompt = () => {
-    let promptText = '';
-    let record: PromptRecord;
-    const now = Date.now();
-
-    if (apMode === 'showcase-exterior' || apMode === 'showcase-interior') {
-      const type = apMode === 'showcase-exterior' ? 'exterior' : 'interior';
-      promptText = generateShowcasePrompt(type, apSelectedStyle, apSelectedImageNum);
-      record = {
-        filenameCode: apFilenameCode,
-        mode: apMode,
-        style: ALL_STYLE_CODES[apSelectedStyle],
-        imageNum: apSelectedImageNum,
-        promptText,
-        status: 'pending',
-        createdAt: now,
-        updatedAt: now,
-      };
-    } else {
-      const pos = getQuadPosition(apSelectedQuadNum, apSelectedPosition);
-      if (!pos) return;
-      const styleName = getStyleNameFromCode(pos.style);
-      promptText = generateQuadPrompt(apSelectedCategory, styleName, pos.vd, pos.mp);
-      record = {
-        filenameCode: apFilenameCode,
-        mode: 'quad',
-        category: apSelectedCategory,
-        quadNum: apSelectedQuadNum,
-        position: apSelectedPosition,
-        style: pos.style,
-        visualDensity: pos.vd,
-        moodPalette: pos.mp,
-        promptText,
-        status: 'pending',
-        createdAt: now,
-        updatedAt: now,
-      };
-    }
-
-    setApPromptData(prev => ({ ...prev, [apFilenameCode]: record }));
-    setApCurrentPrompt(record);
-    apShowToast(`Prompt generated: ${apFilenameCode}`);
-  };
-
-  const apBatchGenerate = () => {
-    const now = Date.now();
-    const newRecords: Record<string, PromptRecord> = {};
-
-    if (apMode === 'showcase-exterior' || apMode === 'showcase-interior') {
-      const type = apMode === 'showcase-exterior' ? 'exterior' : 'interior';
-      ALL_STYLES.forEach(style => {
-        SHOWCASE_IMAGE_NUMBERS.forEach(imgNum => {
-          const filename = generateShowcaseFilename(type, ALL_STYLE_CODES[style], imgNum);
-          const promptText = generateShowcasePrompt(type, style, imgNum);
-          newRecords[filename] = {
-            filenameCode: filename,
-            mode: apMode,
-            style: ALL_STYLE_CODES[style],
-            imageNum: imgNum,
-            promptText,
-            status: 'pending',
-            createdAt: now,
-            updatedAt: now,
-          };
-        });
-      });
-      apShowToast(`Generated 27 ${type} prompts`);
-    } else {
-      // Generate all 16 for selected category
-      ['001', '002', '003', '004'].forEach(quadNum => {
-        [0, 1, 2, 3].forEach(position => {
-          const pos = getQuadPosition(quadNum, position);
-          if (!pos) return;
-          const filename = generateQuadFilename(apSelectedCategory, quadNum, position, pos.style, pos.vd, pos.mp);
-          const styleName = getStyleNameFromCode(pos.style);
-          const promptText = generateQuadPrompt(apSelectedCategory, styleName, pos.vd, pos.mp);
-          newRecords[filename] = {
-            filenameCode: filename,
-            mode: 'quad',
-            category: apSelectedCategory,
-            quadNum,
-            position,
-            style: pos.style,
-            visualDensity: pos.vd,
-            moodPalette: pos.mp,
-            promptText,
-            status: 'pending',
-            createdAt: now,
-            updatedAt: now,
-          };
-        });
-      });
-      apShowToast(`Generated 16 prompts for ${apSelectedCategory}`);
-    }
-
-    setApPromptData(prev => ({ ...prev, ...newRecords }));
-  };
-
-  const apCycleStatus = (filename: string) => {
-    const existing = apPromptData[filename];
-    const currentStatus = existing?.status || 'not_generated';
-    const currentIndex = STATUS_CYCLE.indexOf(currentStatus);
-    const nextStatus = STATUS_CYCLE[(currentIndex + 1) % STATUS_CYCLE.length];
-
-    if (existing) {
-      setApPromptData(prev => ({
-        ...prev,
-        [filename]: { ...existing, status: nextStatus, updatedAt: Date.now() }
-      }));
-    } else {
-      // Create a minimal record if it doesn't exist
-      setApPromptData(prev => ({
-        ...prev,
-        [filename]: {
-          filenameCode: filename,
-          mode: 'quad',
-          style: '',
-          promptText: '',
-          status: nextStatus,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        }
-      }));
-    }
-    apShowToast(`${filename} → ${nextStatus.replace(/_/g, ' ')}`);
-  };
-
-  const apOpenUploadModal = (filename: string, e: React.MouseEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      setApUploadFilename(filename);
-      setApUploadUrl('');
-      setApUploadModalOpen(true);
-    } else {
-      apCycleStatus(filename);
-    }
-  };
-
-  const apHandleUpload = async () => {
-    if (!apUploadUrl || !apUploadFilename) return;
-    setApIsUploading(true);
-
-    // For now, just mark as uploaded and store the URL
-    // In production, this would upload to Cloudinary
-    setApPromptData(prev => ({
-      ...prev,
-      [apUploadFilename]: {
-        ...(prev[apUploadFilename] || {
-          filenameCode: apUploadFilename,
-          mode: 'quad',
-          style: '',
-          promptText: '',
-          createdAt: Date.now(),
-        }),
-        status: 'uploaded',
-        cloudinaryUrl: apUploadUrl,
-        updatedAt: Date.now(),
-      }
-    }));
-
-    setApIsUploading(false);
-    setApUploadModalOpen(false);
-    apShowToast(`Uploaded: ${apUploadFilename}`);
-  };
-
-  const apGetStatusForFile = (filename: string): PromptStatus => {
-    return apPromptData[filename]?.status || 'not_generated';
-  };
-
-  const apExportCsv = () => {
-    const records = Object.values(apPromptData);
-    if (records.length === 0) {
-      apShowToast('No data to export', 'error');
-      return;
-    }
-    const headers = ['filename', 'mode', 'category', 'style', 'status', 'promptText', 'cloudinaryUrl'];
-    const rows = records.map(r => [
-      r.filenameCode, r.mode, r.category || '', r.style, r.status, `"${r.promptText.replace(/"/g, '""')}"`, r.cloudinaryUrl || ''
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `archiprompt-export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    apShowToast('CSV exported');
-  };
-
-  const apExportJson = () => {
-    const records = Object.values(apPromptData);
-    if (records.length === 0) {
-      apShowToast('No data to export', 'error');
-      return;
-    }
-    const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `archiprompt-export-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    apShowToast('JSON exported');
   };
 
   // Helper to calculate metrics from a specific session (for redirect flow)
@@ -570,7 +303,6 @@ const App: React.FC = () => {
         
         // If returnUrl exists, redirect back to KYC with profile data
         if (returnUrl) {
-          // Build the profile data for export
           const metrics = calculateStyleMetricsFromSession(completedSession);
           if (metrics) {
             const reportData: ReportData = {
@@ -585,10 +317,8 @@ const App: React.FC = () => {
               exportedAt: new Date().toISOString()
             };
             
-            // Save locally as well
             saveProfileToStorage(reportData);
             
-            // Encode and redirect
             const encoded = btoa(encodeURIComponent(JSON.stringify(reportData)));
             window.location.href = `${returnUrl}#tasteProfile=${encoded}`;
             return;
@@ -624,19 +354,14 @@ const App: React.FC = () => {
   };
 
   const openAdmin = () => {
-    setPreviousView(view);
     setView('admin');
   };
 
   const closeAdmin = () => {
-    // Fallback to welcome if previousView is also admin or undefined
-    const targetView = (previousView && previousView !== 'admin' && previousView !== 'prompt-architect') 
-      ? previousView 
-      : 'welcome';
-    setView(targetView);
+    setView('welcome');
   };
 
-  // Fixed calculateStyleMetrics - derives values from actual selection codes
+  // Calculate style metrics from session
   const calculateStyleMetrics = (): StyleMetrics | null => {
     if (!session) return null;
     
@@ -646,25 +371,21 @@ const App: React.FC = () => {
 
     Object.values(session.progress).forEach(catProgress => {
       catProgress.selections.forEach(sel => {
-        // Only count actual image selections (0-3), not "all work" (-1) or "none appeal" (-2)
         if (sel.selectedIndex >= 0 && sel.selectedIndex <= 3) {
           const codes = getSelectionCodes(sel.quadId, sel.selectedIndex);
           if (codes) {
-            // Extract numeric values from codes
-            const asValue = getCodeValue(codes.style); // AS1→1, AS3→3, AS6→6, AS9→9
-            const vdValue = getCodeValue(codes.vd);    // VD1→1, VD3→3, VD6→6, VD9→9
-            const mpValue = getCodeValue(codes.mp);    // MP1→1, MP3→3, MP6→6, MP9→9
+            const asValue = getCodeValue(codes.style);
+            const vdValue = getCodeValue(codes.vd);
+            const mpValue = getCodeValue(codes.mp);
             
             totalAS += asValue;
             totalVD += vdValue;
             totalMP += mpValue;
             count++;
             
-            // Count style preferences (Regional Influences)
             const styleName = AS_LABELS[codes.style] || codes.style;
             styleCounts[styleName] = (styleCounts[styleName] || 0) + 1;
             
-            // Count material preferences
             const materialName = MP_LABELS[codes.mp] || codes.mp;
             materialCounts[materialName] = (materialCounts[materialName] || 0) + 1;
           }
@@ -674,11 +395,10 @@ const App: React.FC = () => {
 
     if (count === 0) return null;
     
-    const avgAS = totalAS / count;  // Style Era: 1=Contemporary, 9=Traditional
-    const avgVD = totalVD / count;  // Material Complexity: 1=Minimal, 9=Layered
-    const avgMP = totalMP / count;  // Mood Palette: 1=Warm, 9=Cool
+    const avgAS = totalAS / count;
+    const avgVD = totalVD / count;
+    const avgMP = totalMP / count;
 
-    // Determine overall style label
     let styleLabel = '';
     if (avgAS <= 3) styleLabel = avgMP <= 5 ? 'Contemporary Warm' : 'Contemporary Cool';
     else if (avgAS <= 6) styleLabel = 'Transitional';
@@ -687,16 +407,16 @@ const App: React.FC = () => {
     else if (avgVD >= 7) styleLabel += ' Layered';
 
     return { 
-      avgCT: avgAS,  // CT = Contemporary/Traditional = AS
-      avgML: avgVD,  // ML = Minimal/Layered = VD
-      avgWC: avgMP,  // WC = Warm/Cool = MP
+      avgCT: avgAS,
+      avgML: avgVD,
+      avgWC: avgMP,
       regionPreferences: styleCounts, 
       materialPreferences: materialCounts, 
       styleLabel 
     };
   };
 
-  // Calculate metrics for a specific category only
+  // Calculate metrics for a specific category
   const calculateCategoryMetrics = (categoryId: string): { avgAS: number, avgVD: number, avgMP: number } | null => {
     if (!session) return null;
     
@@ -769,16 +489,12 @@ const App: React.FC = () => {
     setImageLoadErrors(prev => ({ ...prev, [`${quadId}_${index}`]: true }));
   };
 
-  // Handle N4S logo click - different behavior based on current view
   const handleLogoClick = () => {
-    if (view === 'admin' || view === 'prompt-architect') {
-      // From Admin or Prompt Architect, go back to welcome
+    if (view === 'admin') {
       setView('welcome');
     } else if (view === 'exploration') {
-      // From Taste Exploration (4 images), go to KYC Design Preferences page
       window.location.href = 'https://home-5019238456.app-ionos.space';
     } else {
-      // Default: go to welcome
       setView('welcome');
     }
   };
@@ -1044,453 +760,9 @@ const App: React.FC = () => {
             );
           })}
         </div>
-
-        <div className="admin-footer">
-          <button 
-            className="pa-launch-btn"
-            onClick={() => { setPreviousView('admin'); setView('prompt-architect'); }}
-          >
-            ✨ Prompt Architect
-          </button>
-        </div>
       </div>
     );
   };
-
-  // ============================================
-  // ARCHIPROMPT UI RENDERING
-  // ============================================
-
-  const AP_CATEGORY_OPTIONS = Object.values(categories).map(c => ({ code: c.code, label: c.name }));
-  const QUAD_NUMS = ['001', '002', '003', '004'];
-
-  const STATUS_COLORS: Record<PromptStatus, string> = {
-    'not_generated': 'ap-status-not-generated',
-    'pending': 'ap-status-pending',
-    'in_midjourney': 'ap-status-midjourney',
-    'selected': 'ap-status-selected',
-    'uploaded': 'ap-status-uploaded',
-  };
-
-  const renderArchiPromptContent = () => (
-    <div className="archiprompt-container">
-      {/* Toast Notification */}
-      {apToast && (
-        <div className={`ap-toast ${apToast.type}`}>
-          {apToast.message}
-        </div>
-      )}
-
-      {/* Upload Modal */}
-      {apUploadModalOpen && (
-        <div className="ap-modal-overlay" onClick={() => setApUploadModalOpen(false)}>
-          <div className="ap-modal" onClick={e => e.stopPropagation()}>
-            <div className="ap-modal-header">
-              <h3>Upload Image</h3>
-              <button className="ap-modal-close" onClick={() => setApUploadModalOpen(false)}>×</button>
-            </div>
-            <div className="ap-modal-body">
-              <p className="ap-modal-filename">{apUploadFilename}</p>
-              <input
-                type="text"
-                className="ap-input"
-                placeholder="Paste Midjourney image URL..."
-                value={apUploadUrl}
-                onChange={e => setApUploadUrl(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="ap-modal-footer">
-              <button className="ap-btn-secondary" onClick={() => setApUploadModalOpen(false)}>Cancel</button>
-              <button 
-                className="ap-btn-primary" 
-                onClick={apHandleUpload}
-                disabled={!apUploadUrl || apIsUploading}
-              >
-                {apIsUploading ? 'Uploading...' : 'Upload'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="ap-header">
-        <div className="ap-header-left">
-          <div className="ap-logo">
-            <span className="ap-logo-icon">📐</span>
-            <div>
-              <h1>ARCHI<span className="ap-logo-light">PROMPT</span></h1>
-              <p className="ap-logo-subtitle">N4S Image Generator</p>
-            </div>
-          </div>
-        </div>
-        <div className="ap-header-stats">
-          <span className="ap-stat uploaded">✓ {apStats.uploaded}</span>
-          <span className="ap-stat pending">⏳ {apStats.pending}</span>
-          <span className="ap-stat total">{apStats.uploaded + apStats.pending + apStats.inMidjourney + apStats.selected} / {apStats.total}</span>
-        </div>
-        <div className="ap-header-actions">
-          <button className="ap-btn-small" onClick={apExportCsv}>📊 CSV</button>
-          <button className="ap-btn-small" onClick={apExportJson}>📦 JSON</button>
-          <button className="ap-btn-back" onClick={() => setView(previousView)}>← Back</button>
-        </div>
-      </header>
-
-      {/* Tab Navigation */}
-      <div className="ap-tabs">
-        <button 
-          className={`ap-tab ${apActiveTab === 'generate' ? 'active' : ''}`}
-          onClick={() => setApActiveTab('generate')}
-        >
-          Generate Prompts
-        </button>
-        <button 
-          className={`ap-tab ${apActiveTab === 'checklist' ? 'active' : ''}`}
-          onClick={() => setApActiveTab('checklist')}
-        >
-          Progress Checklist
-        </button>
-      </div>
-
-      {/* Generate Tab */}
-      {apActiveTab === 'generate' && (
-        <div className="ap-generate-layout">
-          {/* Controls Panel */}
-          <div className="ap-controls-panel">
-            <div className="ap-section">
-              <label className="ap-label">Generation Mode</label>
-              <div className="ap-mode-grid">
-                {[
-                  { mode: 'showcase-exterior' as GenerationMode, label: 'AS Exterior', desc: '27 images', icon: '🏛️' },
-                  { mode: 'showcase-interior' as GenerationMode, label: 'AS Interior', desc: '27 images', icon: '🏠' },
-                  { mode: 'quad' as GenerationMode, label: 'Taste Quads', desc: '144 images', icon: '⊞' },
-                ].map(({ mode, label, desc, icon }) => (
-                  <button
-                    key={mode}
-                    className={`ap-mode-btn ${apMode === mode ? 'active' : ''}`}
-                    onClick={() => setApMode(mode)}
-                  >
-                    <span className="ap-mode-icon">{icon}</span>
-                    <span className="ap-mode-label">{label}</span>
-                    <span className="ap-mode-desc">{desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filename Display */}
-            <div className="ap-filename-display">
-              <span className="ap-filename-label">Filename Code</span>
-              <div className="ap-filename-value">
-                <code>{apFilenameCode || '---'}</code>
-                <button 
-                  className="ap-copy-btn"
-                  onClick={() => apFilenameCode && apCopyToClipboard(apFilenameCode, 'Filename')}
-                  disabled={!apFilenameCode}
-                >
-                  📋
-                </button>
-              </div>
-            </div>
-
-            {/* Showcase Mode Controls */}
-            {(apMode === 'showcase-exterior' || apMode === 'showcase-interior') && (
-              <>
-                <div className="ap-section">
-                  <label className="ap-label">Architectural Style</label>
-                  <div className="ap-style-list">
-                    {ALL_STYLES.map(style => (
-                      <button
-                        key={style}
-                        className={`ap-style-btn ${apSelectedStyle === style ? 'active' : ''}`}
-                        onClick={() => setApSelectedStyle(style)}
-                      >
-                        <span>{style}</span>
-                        <span className="ap-style-code">{ALL_STYLE_CODES[style]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="ap-section">
-                  <label className="ap-label">Image Variation</label>
-                  <div className="ap-image-num-grid">
-                    {SHOWCASE_IMAGE_NUMBERS.map(num => (
-                      <button
-                        key={num}
-                        className={`ap-img-num-btn ${apSelectedImageNum === num ? 'active' : ''}`}
-                        onClick={() => setApSelectedImageNum(num)}
-                      >
-                        {num}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="ap-hint">{IMAGE_VARIATIONS[apSelectedImageNum]}</p>
-                </div>
-              </>
-            )}
-
-            {/* Quad Mode Controls */}
-            {apMode === 'quad' && (
-              <>
-                <div className="ap-section">
-                  <label className="ap-label">Category</label>
-                  <div className="ap-category-grid">
-                    {AP_CATEGORY_OPTIONS.map(cat => (
-                      <button
-                        key={cat.code}
-                        className={`ap-cat-btn ${apSelectedCategory === cat.code ? 'active' : ''}`}
-                        onClick={() => setApSelectedCategory(cat.code)}
-                      >
-                        <span className="ap-cat-code">{cat.code}</span>
-                        <span className="ap-cat-label">{cat.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="ap-section">
-                  <label className="ap-label">Quad Number</label>
-                  <div className="ap-quad-num-grid">
-                    {QUAD_NUMS.map(num => (
-                      <button
-                        key={num}
-                        className={`ap-quad-num-btn ${apSelectedQuadNum === num ? 'active' : ''}`}
-                        onClick={() => setApSelectedQuadNum(num)}
-                      >
-                        {num}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="ap-section">
-                  <label className="ap-label">Position (0-3)</label>
-                  <div className="ap-position-grid">
-                    {[0, 1, 2, 3].map(pos => {
-                      const posData = getQuadPosition(apSelectedQuadNum, pos);
-                      return (
-                        <button
-                          key={pos}
-                          className={`ap-position-btn ${apSelectedPosition === pos ? 'active' : ''}`}
-                          onClick={() => setApSelectedPosition(pos)}
-                        >
-                          <span className="ap-pos-num">{pos}</span>
-                          {posData && (
-                            <span className="ap-pos-codes">
-                              {posData.style} / {posData.vd} / {posData.mp}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Generate Buttons */}
-            <div className="ap-generate-actions">
-              <button className="ap-btn-generate" onClick={apGeneratePrompt}>
-                ✨ Generate Prompt
-              </button>
-              <button className="ap-btn-batch" onClick={apBatchGenerate}>
-                ⊞ {apMode === 'quad' ? `Generate All 16 for ${apSelectedCategory}` : `Generate All 27 ${apMode.replace('showcase-', '')}`}
-              </button>
-            </div>
-
-            <p className="ap-params-note">
-              All prompts include: <code>--ar 4:5 --style raw --v 7</code>
-            </p>
-          </div>
-
-          {/* Results Panel */}
-          <div className="ap-results-panel">
-            <h2>Generated Prompt</h2>
-            {apCurrentPrompt ? (
-              <div className="ap-prompt-card">
-                <div className="ap-prompt-badges">
-                  <span className="ap-badge primary">{apCurrentPrompt.filenameCode}</span>
-                  <span className="ap-badge">{apCurrentPrompt.mode}</span>
-                  {apCurrentPrompt.category && <span className="ap-badge">{apCurrentPrompt.category}</span>}
-                </div>
-                <div className="ap-prompt-text">
-                  {apCurrentPrompt.promptText}
-                </div>
-                <div className="ap-prompt-actions">
-                  <button 
-                    className="ap-btn-copy"
-                    onClick={() => apCopyToClipboard(apCurrentPrompt.filenameCode, 'Filename')}
-                  >
-                    📋 Code
-                  </button>
-                  <button 
-                    className="ap-btn-copy primary"
-                    onClick={() => apCopyToClipboard(apCurrentPrompt.promptText, 'Prompt')}
-                  >
-                    📋 Prompt
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="ap-empty-state">
-                <span className="ap-empty-icon">✨</span>
-                <h3>Ready to Create</h3>
-                <p>Configure your settings and click Generate.</p>
-              </div>
-            )}
-
-            {/* Recent History */}
-            {Object.keys(apPromptData).length > 0 && (
-              <div className="ap-history">
-                <h3>Recent Generations</h3>
-                <div className="ap-history-list">
-                  {Object.values(apPromptData)
-                    .sort((a, b) => b.updatedAt - a.updatedAt)
-                    .slice(0, 10)
-                    .map(record => (
-                      <div 
-                        key={record.filenameCode}
-                        className="ap-history-item"
-                        onClick={() => apCopyToClipboard(record.promptText, 'Prompt')}
-                      >
-                        <span className="ap-history-filename">{record.filenameCode}</span>
-                        <span className={`ap-history-status ${STATUS_COLORS[record.status]}`}>
-                          {record.status.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Checklist Tab */}
-      {apActiveTab === 'checklist' && (
-        <div className="ap-checklist">
-          <div className="ap-checklist-instructions">
-            <strong>Click</strong> any cell to cycle status. <strong>Ctrl+Click</strong> to upload from URL.
-          </div>
-
-          {/* Stats Cards */}
-          <div className="ap-stats-grid">
-            <div className="ap-stat-card total"><span className="ap-stat-num">{apStats.total}</span><span className="ap-stat-label">Total</span></div>
-            <div className="ap-stat-card pending"><span className="ap-stat-num">{apStats.pending}</span><span className="ap-stat-label">Pending</span></div>
-            <div className="ap-stat-card midjourney"><span className="ap-stat-num">{apStats.inMidjourney}</span><span className="ap-stat-label">In MJ</span></div>
-            <div className="ap-stat-card selected"><span className="ap-stat-num">{apStats.selected}</span><span className="ap-stat-label">Selected</span></div>
-            <div className="ap-stat-card uploaded"><span className="ap-stat-num">{apStats.uploaded}</span><span className="ap-stat-label">Uploaded</span></div>
-          </div>
-
-          {/* Showcase Exterior */}
-          <div className="ap-matrix-section">
-            <h3>🏛️ AS Exterior Showcase (27 images)</h3>
-            <div className="ap-matrix-table">
-              <div className="ap-matrix-header">
-                <div className="ap-matrix-style-col">Style</div>
-                <div className="ap-matrix-img-col">01</div>
-                <div className="ap-matrix-img-col">02</div>
-                <div className="ap-matrix-img-col">03</div>
-              </div>
-              {ALL_STYLES.map(style => (
-                <div key={style} className="ap-matrix-row">
-                  <div className="ap-matrix-style-col">
-                    <span className="ap-matrix-style-name">{style}</span>
-                    <span className="ap-matrix-style-code">{ALL_STYLE_CODES[style]}</span>
-                  </div>
-                  {SHOWCASE_IMAGE_NUMBERS.map(imgNum => {
-                    const filename = generateShowcaseFilename('exterior', ALL_STYLE_CODES[style], imgNum);
-                    const status = apGetStatusForFile(filename);
-                    return (
-                      <div 
-                        key={imgNum}
-                        className={`ap-matrix-cell ${STATUS_COLORS[status]}`}
-                        onClick={(e) => apOpenUploadModal(filename, e)}
-                        title={filename}
-                      >
-                        {status === 'uploaded' ? '✓' : status === 'not_generated' ? '○' : '◐'}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Showcase Interior */}
-          <div className="ap-matrix-section">
-            <h3>🏠 AS Interior Showcase (27 images)</h3>
-            <div className="ap-matrix-table">
-              <div className="ap-matrix-header">
-                <div className="ap-matrix-style-col">Style</div>
-                <div className="ap-matrix-img-col">01</div>
-                <div className="ap-matrix-img-col">02</div>
-                <div className="ap-matrix-img-col">03</div>
-              </div>
-              {ALL_STYLES.map(style => (
-                <div key={style} className="ap-matrix-row">
-                  <div className="ap-matrix-style-col">
-                    <span className="ap-matrix-style-name">{style}</span>
-                    <span className="ap-matrix-style-code">{ALL_STYLE_CODES[style]}</span>
-                  </div>
-                  {SHOWCASE_IMAGE_NUMBERS.map(imgNum => {
-                    const filename = generateShowcaseFilename('interior', ALL_STYLE_CODES[style], imgNum);
-                    const status = apGetStatusForFile(filename);
-                    return (
-                      <div 
-                        key={imgNum}
-                        className={`ap-matrix-cell ${STATUS_COLORS[status]}`}
-                        onClick={(e) => apOpenUploadModal(filename, e)}
-                        title={filename}
-                      >
-                        {status === 'uploaded' ? '✓' : status === 'not_generated' ? '○' : '◐'}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quad Categories */}
-          {AP_CATEGORY_OPTIONS.map(cat => (
-            <div key={cat.code} className="ap-matrix-section">
-              <h3>⊞ {cat.label} ({cat.code}) - 16 images</h3>
-              <div className="ap-matrix-table">
-                <div className="ap-matrix-header">
-                  <div className="ap-matrix-quad-col">Quad</div>
-                  <div className="ap-matrix-img-col">Pos 0</div>
-                  <div className="ap-matrix-img-col">Pos 1</div>
-                  <div className="ap-matrix-img-col">Pos 2</div>
-                  <div className="ap-matrix-img-col">Pos 3</div>
-                </div>
-                {QUAD_NUMS.map(quadNum => (
-                  <div key={quadNum} className="ap-matrix-row">
-                    <div className="ap-matrix-quad-col">{quadNum}</div>
-                    {[0, 1, 2, 3].map(pos => {
-                      const posData = getQuadPosition(quadNum, pos);
-                      if (!posData) return <div key={pos} className="ap-matrix-cell">-</div>;
-                      const filename = generateQuadFilename(cat.code, quadNum, pos, posData.style, posData.vd, posData.mp);
-                      const status = apGetStatusForFile(filename);
-                      return (
-                        <div 
-                          key={pos}
-                          className={`ap-matrix-cell ${STATUS_COLORS[status]}`}
-                          onClick={(e) => apOpenUploadModal(filename, e)}
-                          title={filename}
-                        >
-                          {status === 'uploaded' ? '✓' : status === 'not_generated' ? '○' : '◐'}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   const renderDNASlider = (label: string, value: number, leftLabel: string, rightLabel: string) => {
     const fiveScaleValue = convertToFiveScale(value);
@@ -1558,7 +830,6 @@ const App: React.FC = () => {
           <div className="report-actions-section">
             <h3>Export Your Profile</h3>
             
-            {/* Partner status indicator for couples */}
             {isCoupleAssessment(clientId || '') && (
               <div className="partner-status">
                 {getPartnerProfile(clientId || '') ? (
@@ -1581,9 +852,7 @@ const App: React.FC = () => {
                     wcScale5: convertToFiveScale(metrics.avgWC)
                   }
                 };
-                // Save profile for partner detection
                 saveProfileToStorage(reportData);
-                // Generator will auto-detect partner from localStorage
                 const generator = new TasteReportGenerator(reportData);
                 await generator.generate();
                 generator.openInNewTab();
@@ -1603,7 +872,6 @@ const App: React.FC = () => {
                     wcScale5: convertToFiveScale(metrics.avgWC)
                   }
                 };
-                // Save profile for partner detection
                 saveProfileToStorage(reportData);
                 const generator = new TasteReportGenerator(reportData);
                 await generator.generate();
@@ -1624,16 +892,12 @@ const App: React.FC = () => {
                     wcScale5: convertToFiveScale(metrics.avgWC)
                   }
                 };
-                // Save profile for partner detection
                 saveProfileToStorage(reportData);
                 const generator = new TasteReportGenerator(reportData);
                 await generator.generate();
-                const base64 = generator.getBase64();
-                // Open mailto with subject line - user will need to attach PDF manually
                 const subject = encodeURIComponent(`N4S Design Profile - ${clientId || 'Client'}`);
                 const body = encodeURIComponent(`Please find attached my N4S Taste Profile report.\n\nClient ID: ${clientId || session.sessionId}\nGenerated: ${new Date().toLocaleDateString()}`);
                 window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-                // Also trigger download so user has the file to attach
                 generator.download(`N4S-Taste-Profile-${clientId || session.sessionId}.pdf`);
               }}>
                 <span className="btn-icon">✉️</span>
@@ -1730,7 +994,6 @@ const App: React.FC = () => {
             {view === 'category-complete' && renderCategoryCompleteContent()}
             {view === 'analysis' && renderAnalysisContent()}
             {view === 'admin' && renderAdminContent()}
-            {view === 'prompt-architect' && renderArchiPromptContent()}
           </div>
         </main>
       </div>
