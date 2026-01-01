@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TasteSession, TasteQuad, QuadSelection, CategoryProgress, AppView, StyleMetrics, PromptRecord, PromptStatus, GenerationMode, MatrixStats } from './types/tasteTypes';
 import { 
   CATEGORIES, SESSION_CONFIG, getImageUrl, getSelectionCodes, getCodeValue, AS_LABELS, MP_LABELS, VD_LABELS,
-  ARCHIPROMPT_STORAGE_KEY, ALL_STYLES, ALL_STYLE_CODES, QUAD_STYLES, QUAD_STYLE_CODES,
+  ALL_STYLES, ALL_STYLE_CODES, QUAD_STYLES, QUAD_STYLE_CODES,
   SHOWCASE_IMAGE_NUMBERS, IMAGE_VARIATIONS, STYLE_DESCRIPTIONS, CATEGORY_SCENE_DESCRIPTIONS,
   generateShowcaseFilename, generateQuadFilename, getQuadPosition, getStyleNameFromCode,
   generateShowcasePrompt, generateQuadPrompt, QUAD_MATRIX
@@ -10,6 +10,9 @@ import {
 import { quads, categoryOrder, getQuadsByCategory, categories } from './data/quadMetadata';
 import { TasteReportGenerator, ReportData, saveProfileToStorage, isCoupleAssessment, getPartnerClientId, getPartnerProfile } from './utils/reportGenerator';
 import './App.css';
+
+// Local constant for ArchiPrompt storage (defined locally, not imported)
+const ARCHIPROMPT_STORAGE_KEY = 'n4s_archiprompt_data';
 
 // Extended AppView to include 'admin' and 'prompt-architect'
 type ExtendedAppView = AppView | 'admin' | 'prompt-architect';
