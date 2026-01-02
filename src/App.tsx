@@ -31,18 +31,23 @@ const getCodeValue = (code: string): number => {
 };
 
 // Helper to get selection codes from quad metadata
+// All 4 images in a quad share the same style codes from quad.metadata
 const getSelectionCodes = (quadId: string, selectedIndex: number): { style: string, vd: string, mp: string, AS: string, VD: string, MP: string } | null => {
   const quad = quads[quadId];
-  if (!quad || !quad.images || !quad.images[selectedIndex]) return null;
-  const img = quad.images[selectedIndex];
-  return {
-    style: img.style || 'AS5',
-    vd: img.vd || 'VD5',
-    mp: img.mp || 'MP5',
-    AS: img.style || 'AS5',
-    VD: img.vd || 'VD5',
-    MP: img.mp || 'MP5'
-  };
+  if (!quad || !quad.metadata) return null;
+  if (selectedIndex < 0 || selectedIndex > 3) return null;
+  
+  // Use quad-level metadata (ct=style era, ml=material layer, wc=warm/cool)
+  const ct = quad.metadata.ct || 5;
+  const ml = quad.metadata.ml || 5;
+  const wc = quad.metadata.wc || 5;
+  
+  // Convert to style codes
+  const style = `AS${ct}`;
+  const vd = `VD${ml}`;
+  const mp = `MP${wc}`;
+  
+  return { style, vd, mp, AS: style, VD: vd, MP: mp };
 };
 
 const loadQuadEnabledState = (): Record<string, boolean> => {
@@ -166,10 +171,7 @@ const App: React.FC = () => {
 
   // Toggle quad enabled state
   const toggleQuad = (quadId: string) => {
-    const newState = {
-      ...quadEnabledState,
-      [quadId]: !quadEnabledState[quadId]
-    };
+    const newState = { ...quadEnabledState, [quadId]: !quadEnabledState[quadId] };
     setQuadEnabledState(newState);
     saveQuadEnabledState(newState);
   };
@@ -178,19 +180,14 @@ const App: React.FC = () => {
   const toggleAllInCategory = (categoryId: string, enabled: boolean) => {
     const categoryQuads = getQuadsByCategory(categoryId);
     const newState = { ...quadEnabledState };
-    categoryQuads.forEach(q => {
-      newState[q.quadId] = enabled;
-    });
+    categoryQuads.forEach(q => { newState[q.quadId] = enabled; });
     setQuadEnabledState(newState);
     saveQuadEnabledState(newState);
   };
 
   // Toggle category expansion in admin
   const toggleCategoryExpand = (categoryId: string) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [categoryId]: !prev[categoryId]
-    }));
+    setExpandedCategories(prev => ({ ...prev, [categoryId]: !prev[categoryId] }));
   };
 
   // Get counts for admin display
@@ -353,13 +350,8 @@ const App: React.FC = () => {
     setView('exploration');
   };
 
-  const openAdmin = () => {
-    setView('admin');
-  };
-
-  const closeAdmin = () => {
-    setView('welcome');
-  };
+  const openAdmin = () => { setView('admin'); };
+  const closeAdmin = () => { setView('welcome'); };
 
   // Calculate style metrics from session
   const calculateStyleMetrics = (): StyleMetrics | null => {
@@ -406,14 +398,7 @@ const App: React.FC = () => {
     if (avgVD <= 3) styleLabel += ' Minimal';
     else if (avgVD >= 7) styleLabel += ' Layered';
 
-    return { 
-      avgCT: avgAS,
-      avgML: avgVD,
-      avgWC: avgMP,
-      regionPreferences: styleCounts, 
-      materialPreferences: materialCounts, 
-      styleLabel 
-    };
+    return { avgCT: avgAS, avgML: avgVD, avgWC: avgMP, regionPreferences: styleCounts, materialPreferences: materialCounts, styleLabel };
   };
 
   // Calculate metrics for a specific category
@@ -439,11 +424,7 @@ const App: React.FC = () => {
     
     if (count === 0) return null;
     
-    return {
-      avgAS: totalAS / count,
-      avgVD: totalVD / count,
-      avgMP: totalMP / count
-    };
+    return { avgAS: totalAS / count, avgVD: totalVD / count, avgMP: totalMP / count };
   };
 
   const renderMiniDNASlider = (label: string, value: number, leftLabel: string, rightLabel: string) => {
@@ -502,12 +483,7 @@ const App: React.FC = () => {
   const renderSidebar = () => (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div 
-          className="sidebar-logo" 
-          onClick={handleLogoClick}
-          style={{ cursor: 'pointer' }}
-          title="Return to Welcome"
-        >
+        <div className="sidebar-logo" onClick={handleLogoClick} style={{ cursor: 'pointer' }} title="Return to Welcome">
           <span className="sidebar-logo-icon">📋</span>
           <span>N4S</span>
         </div>
@@ -526,9 +502,7 @@ const App: React.FC = () => {
         })}
       </nav>
       <div className="sidebar-footer">
-        <button className="sidebar-admin-btn" onClick={openAdmin}>
-          ⚙ Admin
-        </button>
+        <button className="sidebar-admin-btn" onClick={openAdmin}>⚙ Admin</button>
         {isAllComplete() && (
           <button className="sidebar-complete-btn" onClick={() => setView('analysis')}>Complete</button>
         )}
@@ -652,22 +626,10 @@ const App: React.FC = () => {
         </div>
 
         <div className="admin-summary">
-          <div className="admin-stat">
-            <span className="admin-stat-label">Total Quads</span>
-            <span className="admin-stat-value">{totalQuads}</span>
-          </div>
-          <div className="admin-stat">
-            <span className="admin-stat-label">Enabled Quads</span>
-            <span className="admin-stat-value">{totalEnabled}</span>
-          </div>
-          <div className="admin-stat">
-            <span className="admin-stat-label">Disabled Quads</span>
-            <span className={`admin-stat-value ${disabledCount > 0 ? 'warning' : ''}`}>{disabledCount}</span>
-          </div>
-          <div className="admin-stat">
-            <span className="admin-stat-label">Total Images</span>
-            <span className="admin-stat-value">{totalEnabled * 4}</span>
-          </div>
+          <div className="admin-stat"><span className="admin-stat-label">Total Quads</span><span className="admin-stat-value">{totalQuads}</span></div>
+          <div className="admin-stat"><span className="admin-stat-label">Enabled Quads</span><span className="admin-stat-value">{totalEnabled}</span></div>
+          <div className="admin-stat"><span className="admin-stat-label">Disabled Quads</span><span className={`admin-stat-value ${disabledCount > 0 ? 'warning' : ''}`}>{disabledCount}</span></div>
+          <div className="admin-stat"><span className="admin-stat-label">Total Images</span><span className="admin-stat-value">{totalEnabled * 4}</span></div>
         </div>
 
         <div className="admin-categories">
@@ -682,23 +644,11 @@ const App: React.FC = () => {
                 <div className="admin-category-header" onClick={() => toggleCategoryExpand(catId)}>
                   <div>
                     <span className="admin-category-title">{cat.name}</span>
-                    <span className="admin-category-count">
-                      {' '}— <span className="enabled">{enabledCount}</span> of {categoryQuads.length} quads enabled ({enabledCount * 4} images)
-                    </span>
+                    <span className="admin-category-count"> — <span className="enabled">{enabledCount}</span> of {categoryQuads.length} quads enabled ({enabledCount * 4} images)</span>
                   </div>
                   <div className="admin-category-toggle">
-                    <button 
-                      className="admin-toggle-all-btn" 
-                      onClick={(e) => { e.stopPropagation(); toggleAllInCategory(catId, true); }}
-                    >
-                      Enable All
-                    </button>
-                    <button 
-                      className="admin-toggle-all-btn" 
-                      onClick={(e) => { e.stopPropagation(); toggleAllInCategory(catId, false); }}
-                    >
-                      Disable All
-                    </button>
+                    <button className="admin-toggle-all-btn" onClick={(e) => { e.stopPropagation(); toggleAllInCategory(catId, true); }}>Enable All</button>
+                    <button className="admin-toggle-all-btn" onClick={(e) => { e.stopPropagation(); toggleAllInCategory(catId, false); }}>Disable All</button>
                     <span className={`admin-expand-icon ${isExpanded ? 'expanded' : ''}`}>▼</span>
                   </div>
                 </div>
@@ -714,23 +664,11 @@ const App: React.FC = () => {
                               <div key={idx} className="admin-quad-image-row">
                                 <div 
                                   className="admin-thumb-container"
-                                  onMouseEnter={(e) => setHoverPreview({
-                                    url: getImageUrl(quad.quadId, idx),
-                                    x: e.clientX + 20,
-                                    y: Math.min(e.clientY - 100, window.innerHeight - 320)
-                                  })}
-                                  onMouseMove={(e) => setHoverPreview({
-                                    url: getImageUrl(quad.quadId, idx),
-                                    x: e.clientX + 20,
-                                    y: Math.min(e.clientY - 100, window.innerHeight - 320)
-                                  })}
+                                  onMouseEnter={(e) => setHoverPreview({ url: getImageUrl(quad.quadId, idx), x: e.clientX + 20, y: Math.min(e.clientY - 100, window.innerHeight - 320) })}
+                                  onMouseMove={(e) => setHoverPreview({ url: getImageUrl(quad.quadId, idx), x: e.clientX + 20, y: Math.min(e.clientY - 100, window.innerHeight - 320) })}
                                   onMouseLeave={() => setHoverPreview(null)}
                                 >
-                                  <img 
-                                    src={getImageUrl(quad.quadId, idx)} 
-                                    alt={`${quad.quadId}_${idx}`}
-                                    className="admin-quad-thumb"
-                                  />
+                                  <img src={getImageUrl(quad.quadId, idx)} alt={`${quad.quadId}_${idx}`} className="admin-quad-thumb" />
                                 </div>
                                 <span className="admin-quad-filename">{quad.quadId}_{idx}.png</span>
                               </div>
@@ -743,11 +681,7 @@ const App: React.FC = () => {
                               <span className="admin-quad-id">{quad.quadId}</span>
                             </div>
                             <label className="toggle-switch">
-                              <input 
-                                type="checkbox" 
-                                checked={isEnabled}
-                                onChange={() => toggleQuad(quad.quadId)}
-                              />
+                              <input type="checkbox" checked={isEnabled} onChange={() => toggleQuad(quad.quadId)} />
                               <span className="toggle-slider"></span>
                             </label>
                           </div>
@@ -806,14 +740,7 @@ const App: React.FC = () => {
             <div className="client-id-display">
               {isEditingClientId ? (
                 <div className="client-id-edit">
-                  <input 
-                    type="text" 
-                    value={tempClientId} 
-                    onChange={(e) => setTempClientId(e.target.value)}
-                    placeholder="e.g., Thornwood-P"
-                    className="client-id-input"
-                    autoFocus
-                  />
+                  <input type="text" value={tempClientId} onChange={(e) => setTempClientId(e.target.value)} placeholder="e.g., Thornwood-P" className="client-id-input" autoFocus />
                   <button className="btn-small" onClick={() => saveClientId(tempClientId)}>Save</button>
                   <button className="btn-small btn-cancel" onClick={() => setIsEditingClientId(false)}>Cancel</button>
                 </div>
@@ -845,12 +772,7 @@ const App: React.FC = () => {
                 const reportData: ReportData = {
                   clientId: clientId || session.sessionId,
                   session,
-                  metrics: {
-                    ...metrics,
-                    ctScale5: convertToFiveScale(metrics.avgCT),
-                    mlScale5: convertToFiveScale(metrics.avgML),
-                    wcScale5: convertToFiveScale(metrics.avgWC)
-                  }
+                  metrics: { ...metrics, ctScale5: convertToFiveScale(metrics.avgCT), mlScale5: convertToFiveScale(metrics.avgML), wcScale5: convertToFiveScale(metrics.avgWC) }
                 };
                 saveProfileToStorage(reportData);
                 const generator = new TasteReportGenerator(reportData);
@@ -865,12 +787,7 @@ const App: React.FC = () => {
                 const reportData: ReportData = {
                   clientId: clientId || session.sessionId,
                   session,
-                  metrics: {
-                    ...metrics,
-                    ctScale5: convertToFiveScale(metrics.avgCT),
-                    mlScale5: convertToFiveScale(metrics.avgML),
-                    wcScale5: convertToFiveScale(metrics.avgWC)
-                  }
+                  metrics: { ...metrics, ctScale5: convertToFiveScale(metrics.avgCT), mlScale5: convertToFiveScale(metrics.avgML), wcScale5: convertToFiveScale(metrics.avgWC) }
                 };
                 saveProfileToStorage(reportData);
                 const generator = new TasteReportGenerator(reportData);
@@ -885,12 +802,7 @@ const App: React.FC = () => {
                 const reportData: ReportData = {
                   clientId: clientId || session.sessionId,
                   session,
-                  metrics: {
-                    ...metrics,
-                    ctScale5: convertToFiveScale(metrics.avgCT),
-                    mlScale5: convertToFiveScale(metrics.avgML),
-                    wcScale5: convertToFiveScale(metrics.avgWC)
-                  }
+                  metrics: { ...metrics, ctScale5: convertToFiveScale(metrics.avgCT), mlScale5: convertToFiveScale(metrics.avgML), wcScale5: convertToFiveScale(metrics.avgWC) }
                 };
                 saveProfileToStorage(reportData);
                 const generator = new TasteReportGenerator(reportData);
@@ -907,11 +819,7 @@ const App: React.FC = () => {
           </div>
           
           <div className="session-actions">
-            <button className="btn-secondary" onClick={() => { 
-              localStorage.removeItem(`${SESSION_CONFIG.storageKeyPrefix}current_session`); 
-              setSession(null); 
-              setView('welcome'); 
-            }}>Start New Session</button>
+            <button className="btn-secondary" onClick={() => { localStorage.removeItem(`${SESSION_CONFIG.storageKeyPrefix}current_session`); setSession(null); setView('welcome'); }}>Start New Session</button>
           </div>
           
           <div className="design-dna-section">
@@ -926,10 +834,7 @@ const App: React.FC = () => {
               <h3>Regional Influences</h3>
               <div className="preference-list">
                 {topRegions.length > 0 ? topRegions.map(([region, count]) => (
-                  <div key={region} className="preference-item">
-                    <span className="preference-name">{region}</span>
-                    <span className="preference-count">{count}</span>
-                  </div>
+                  <div key={region} className="preference-item"><span className="preference-name">{region}</span><span className="preference-count">{count}</span></div>
                 )) : (
                   <div className="preference-item empty">No selections recorded</div>
                 )}
@@ -956,9 +861,7 @@ const App: React.FC = () => {
                 
                 return (
                   <div key={catId} className="category-dna-card">
-                    <div className="category-dna-header">
-                      <span className="category-dna-name">{cat.name}</span>
-                    </div>
+                    <div className="category-dna-header"><span className="category-dna-name">{cat.name}</span></div>
                     <div className="category-dna-content">
                       <h4>Design DNA</h4>
                       {catMetrics ? (
@@ -998,14 +901,7 @@ const App: React.FC = () => {
         </main>
       </div>
       {hoverPreview && (
-        <div 
-          className="admin-thumb-preview"
-          style={{ 
-            display: 'block',
-            left: hoverPreview.x, 
-            top: hoverPreview.y 
-          }}
-        >
+        <div className="admin-thumb-preview" style={{ display: 'block', left: hoverPreview.x, top: hoverPreview.y }}>
           <img src={hoverPreview.url} alt="Preview" />
         </div>
       )}
