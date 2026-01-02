@@ -5,7 +5,8 @@
 
 import jsPDF from 'jspdf';
 import { TasteSession, StyleMetrics, CategoryProgress } from '../types/tasteTypes';
-import { QUAD_MATRIX, CATEGORIES, TASTE_IMAGE_BASE_URL } from '../config/tasteConfig';
+import { CATEGORIES } from '../config/tasteConfig';
+import { quads } from '../data/quadMetadata';
 
 // ============================================
 // CONSTANTS
@@ -156,12 +157,18 @@ export function isCoupleAssessment(clientId: string): boolean {
 // ============================================
 
 /**
- * Get quad position data from QUAD_MATRIX
+ * Get quad position data from quads metadata
+ * Uses the quads object from quadMetadata instead of QUAD_MATRIX
  */
-function getQuadPosition(quadNum: string, position: number): { style: string; vd: string; mp: string } | null {
-  const quad = QUAD_MATRIX[quadNum];
-  if (quad && position >= 0 && position <= 3) {
-    return quad[position];
+function getQuadPosition(quadId: string, position: number): { style: string; vd: string; mp: string } | null {
+  const quad = quads[quadId];
+  if (quad && quad.images && quad.images[position]) {
+    const img = quad.images[position];
+    return {
+      style: img.style || 'AS5',
+      vd: img.vd || 'VD5',
+      mp: img.mp || 'MP5'
+    };
   }
   return null;
 }
@@ -189,8 +196,7 @@ function getDominantStyle(selections: CategoryProgress['selections']): { code: s
   
   for (const sel of selections) {
     if (sel.selectedIndex < 0) continue;
-    const quadNum = sel.quadId.split('-')[1];
-    const pos = getQuadPosition(quadNum, sel.selectedIndex);
+    const pos = getQuadPosition(sel.quadId, sel.selectedIndex);
     if (pos) {
       styleCounts[pos.style] = (styleCounts[pos.style] || 0) + 1;
     }
@@ -217,12 +223,11 @@ function getCategoryMetrics(selections: CategoryProgress['selections']): { ct: n
   
   for (const sel of selections) {
     if (sel.selectedIndex < 0) continue;
-    const quadNum = sel.quadId.split('-')[1];
-    const pos = getQuadPosition(quadNum, sel.selectedIndex);
+    const pos = getQuadPosition(sel.quadId, sel.selectedIndex);
     if (pos) {
-      const styleNum = parseInt(pos.style.replace('AS', ''));
-      const vdNum = parseInt(pos.vd.replace('VD', ''));
-      const mpNum = parseInt(pos.mp.replace('MP', ''));
+      const styleNum = parseInt(pos.style.replace('AS', '')) || 5;
+      const vdNum = parseInt(pos.vd.replace('VD', '')) || 5;
+      const mpNum = parseInt(pos.mp.replace('MP', '')) || 5;
       ctValues.push(styleNum);
       mlValues.push(vdNum);
       mpValues.push(mpNum);
@@ -246,12 +251,9 @@ function getCategoryMetrics(selections: CategoryProgress['selections']): { ct: n
  * Get selection image filename
  */
 function getSelectionFilename(quadId: string, selectedIndex: number): string | null {
-  const parts = quadId.split('-');
-  const catCode = parts[0];
-  const quadNum = parts[1];
-  const pos = getQuadPosition(quadNum, selectedIndex);
+  const pos = getQuadPosition(quadId, selectedIndex);
   if (pos) {
-    return `${catCode}-${quadNum}_${selectedIndex}_${pos.style}_${pos.vd}_${pos.mp}`;
+    return `${quadId}_${selectedIndex}_${pos.style}_${pos.vd}_${pos.mp}`;
   }
   return null;
 }
@@ -359,6 +361,7 @@ export interface ReportData {
     mlScale5: number;
     wcScale5: number;
   };
+  exportedAt?: string;
 }
 
 // ============================================
@@ -1031,4 +1034,3 @@ export async function getTasteReportBlob(
   await generator.generate();
   return generator.getBlob();
 }
-
