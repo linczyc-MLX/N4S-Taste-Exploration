@@ -57,31 +57,14 @@ const PROFILE_STORAGE_PREFIX = 'n4s_taste_profile_';
 // PARTNER DETECTION UTILITIES
 // ============================================
 
-/**
- * Parse clientId to extract base name and role
- * e.g., "Thornwood-P" → { baseName: "Thornwood", role: "P", isCouple: true }
- * e.g., "SingleClient" → { baseName: "SingleClient", role: null, isCouple: false }
- */
 export function parseClientId(clientId: string): { baseName: string; role: 'P' | 'S' | null; isCouple: boolean } {
   const match = clientId.match(/^(.+)-([PS])$/);
   if (match) {
-    return {
-      baseName: match[1],
-      role: match[2] as 'P' | 'S',
-      isCouple: true
-    };
+    return { baseName: match[1], role: match[2] as 'P' | 'S', isCouple: true };
   }
-  return {
-    baseName: clientId,
-    role: null,
-    isCouple: false
-  };
+  return { baseName: clientId, role: null, isCouple: false };
 }
 
-/**
- * Get the partner's clientId
- * e.g., "Thornwood-P" → "Thornwood-S"
- */
 export function getPartnerClientId(clientId: string): string | null {
   const parsed = parseClientId(clientId);
   if (!parsed.isCouple || !parsed.role) return null;
@@ -89,9 +72,6 @@ export function getPartnerClientId(clientId: string): string | null {
   return `${parsed.baseName}-${partnerRole}`;
 }
 
-/**
- * Get partner's role label
- */
 export function getPartnerRoleLabel(clientId: string): string {
   const parsed = parseClientId(clientId);
   if (parsed.role === 'P') return 'Secondary';
@@ -99,9 +79,6 @@ export function getPartnerRoleLabel(clientId: string): string {
   return 'Partner';
 }
 
-/**
- * Get own role label
- */
 export function getOwnRoleLabel(clientId: string): string {
   const parsed = parseClientId(clientId);
   if (parsed.role === 'P') return 'Principal';
@@ -109,45 +86,26 @@ export function getOwnRoleLabel(clientId: string): string {
   return 'Client';
 }
 
-/**
- * Save a completed profile to localStorage
- */
 export function saveProfileToStorage(data: ReportData): void {
   const key = `${PROFILE_STORAGE_PREFIX}${data.clientId}`;
-  localStorage.setItem(key, JSON.stringify({
-    ...data,
-    savedAt: new Date().toISOString()
-  }));
+  localStorage.setItem(key, JSON.stringify({ ...data, savedAt: new Date().toISOString() }));
 }
 
-/**
- * Load a profile from localStorage
- */
 export function loadProfileFromStorage(clientId: string): ReportData | null {
   const key = `${PROFILE_STORAGE_PREFIX}${clientId}`;
   const stored = localStorage.getItem(key);
   if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(stored); } catch { return null; }
   }
   return null;
 }
 
-/**
- * Check if partner profile exists and is complete
- */
 export function getPartnerProfile(clientId: string): ReportData | null {
   const partnerClientId = getPartnerClientId(clientId);
   if (!partnerClientId) return null;
   return loadProfileFromStorage(partnerClientId);
 }
 
-/**
- * Check if this is a couple assessment
- */
 export function isCoupleAssessment(clientId: string): boolean {
   return parseClientId(clientId).isCouple;
 }
@@ -157,40 +115,35 @@ export function isCoupleAssessment(clientId: string): boolean {
 // ============================================
 
 /**
- * Get quad position data from quads metadata
- * Uses the quads object from quadMetadata instead of QUAD_MATRIX
+ * Get style codes from quad metadata
+ * All 4 images in a quad share the same style codes from quad.metadata
  */
 function getQuadPosition(quadId: string, position: number): { style: string; vd: string; mp: string } | null {
   const quad = quads[quadId];
-  if (quad && quad.images && quad.images[position]) {
-    const img = quad.images[position];
-    return {
-      style: img.style || 'AS5',
-      vd: img.vd || 'VD5',
-      mp: img.mp || 'MP5'
-    };
-  }
-  return null;
+  if (!quad || !quad.metadata) return null;
+  if (position < 0 || position > 3) return null;
+  
+  // Use quad-level metadata (ct=style, ml=material layer, wc=warm/cool)
+  const ct = quad.metadata.ct || 5;
+  const ml = quad.metadata.ml || 5;
+  const wc = quad.metadata.wc || 5;
+  
+  return {
+    style: `AS${ct}`,
+    vd: `VD${ml}`,
+    mp: `MP${wc}`
+  };
 }
 
-/**
- * Get style position on 1-9 scale
- */
 function getStylePosition(styleCode: string): number {
   const idx = AS_ORDER.indexOf(styleCode);
   return idx >= 0 ? idx + 1 : 5;
 }
 
-/**
- * Calculate divergence between two style codes
- */
 function calculateDivergence(styleP: string, styleS: string): number {
   return Math.abs(getStylePosition(styleP) - getStylePosition(styleS));
 }
 
-/**
- * Get dominant style from selections
- */
 function getDominantStyle(selections: CategoryProgress['selections']): { code: string; label: string } {
   const styleCounts: Record<string, number> = {};
   
@@ -209,9 +162,6 @@ function getDominantStyle(selections: CategoryProgress['selections']): { code: s
   return { code: 'AS6', label: 'Modern Classic' };
 }
 
-/**
- * Calculate per-category metrics
- */
 function getCategoryMetrics(selections: CategoryProgress['selections']): { ct: number; ml: number; mp: number } {
   if (!selections || selections.length === 0) {
     return { ct: 2.5, ml: 2.5, mp: 2.5 };
@@ -247,9 +197,6 @@ function getCategoryMetrics(selections: CategoryProgress['selections']): { ct: n
   return { ct: 2.5, ml: 2.5, mp: 2.5 };
 }
 
-/**
- * Get selection image filename
- */
 function getSelectionFilename(quadId: string, selectedIndex: number): string | null {
   const pos = getQuadPosition(quadId, selectedIndex);
   if (pos) {
@@ -258,91 +205,49 @@ function getSelectionFilename(quadId: string, selectedIndex: number): string | n
   return null;
 }
 
-/**
- * Format date for display
- */
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 // ============================================
 // PDF DRAWING HELPERS
 // ============================================
 
-/**
- * Draw a horizontal slider
- */
-function drawSlider(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  width: number,
-  value: number,
-  maxVal: number,
-  leftLabel: string,
-  rightLabel: string
-): void {
+function drawSlider(doc: jsPDF, x: number, y: number, width: number, value: number, maxVal: number, leftLabel: string, rightLabel: string): void {
   const trackHeight = 4;
   const fillWidth = (value / maxVal) * width;
   
-  // Track background
-  doc.setFillColor(226, 232, 240); // Light gray
+  doc.setFillColor(226, 232, 240);
   doc.roundedRect(x, y, width, trackHeight, 2, 2, 'F');
-  
-  // Filled portion
-  doc.setFillColor(201, 162, 39); // Gold
+  doc.setFillColor(201, 162, 39);
   doc.roundedRect(x, y, fillWidth, trackHeight, 2, 2, 'F');
-  
-  // Indicator dot
-  doc.setFillColor(30, 58, 95); // Navy
+  doc.setFillColor(30, 58, 95);
   doc.circle(x + fillWidth, y + trackHeight / 2, 4, 'F');
   
-  // Labels
   doc.setFontSize(6);
-  doc.setTextColor(113, 128, 150); // Light text
+  doc.setTextColor(113, 128, 150);
   doc.text(leftLabel, x, y + trackHeight + 8);
   doc.text(rightLabel, x + width, y + trackHeight + 8, { align: 'right' });
 }
 
-/**
- * Draw a comparison slider with P and S indicators
- */
-function drawComparisonSlider(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  width: number,
-  valueP: number,
-  valueS: number,
-  maxVal: number,
-  leftLabel: string,
-  rightLabel: string
-): void {
+function drawComparisonSlider(doc: jsPDF, x: number, y: number, width: number, valueP: number, valueS: number, maxVal: number, leftLabel: string, rightLabel: string): void {
   const trackHeight = 4;
   const dotPosP = (valueP / maxVal) * width;
   const dotPosS = (valueS / maxVal) * width;
   
-  // Track background
   doc.setFillColor(226, 232, 240);
   doc.roundedRect(x, y, width, trackHeight, 2, 2, 'F');
   
-  // Principal dot (gold)
   doc.setFillColor(201, 162, 39);
   doc.circle(x + dotPosP, y + trackHeight / 2, 5, 'F');
   doc.setFontSize(5);
   doc.setTextColor(30, 58, 95);
   doc.text('P', x + dotPosP - 1.5, y - 3);
   
-  // Secondary dot (navy)
   doc.setFillColor(30, 58, 95);
   doc.circle(x + dotPosS, y + trackHeight / 2, 5, 'F');
   doc.text('S', x + dotPosS - 1.5, y + trackHeight + 10);
   
-  // Labels
   doc.setFontSize(6);
   doc.setTextColor(113, 128, 150);
   doc.text(leftLabel, x, y + trackHeight / 2 + 1);
@@ -389,17 +294,13 @@ export class TasteReportGenerator {
     this.margin = 40;
     this.currentPage = 1;
     
-    // Partner detection
     this.isCouple = isCoupleAssessment(dataP.clientId);
     this.partnerClientId = getPartnerClientId(dataP.clientId);
     
-    // If dataS provided explicitly, use it
     if (dataS) {
       this.dataS = dataS;
       this.partnerPending = false;
-    } 
-    // Otherwise, try to auto-detect from localStorage
-    else if (autoDetectPartner && this.isCouple && this.partnerClientId) {
+    } else if (autoDetectPartner && this.isCouple && this.partnerClientId) {
       this.dataS = getPartnerProfile(this.partnerClientId);
       this.partnerPending = this.dataS === null;
     } else {
@@ -407,34 +308,21 @@ export class TasteReportGenerator {
       this.partnerPending = false;
     }
     
-    // Calculate total pages
-    if (this.isCouple && this.dataS) {
-      this.totalPages = 4; // With partner alignment
-    } else {
-      this.totalPages = 3; // Without partner alignment
-    }
+    this.totalPages = (this.isCouple && this.dataS) ? 4 : 3;
   }
   
-  /**
-   * Generate the complete report
-   */
   async generate(): Promise<jsPDF> {
-    // Page 1: Profile overview + first 4 categories
     this.addPage1();
-    
-    // Page 2: Remaining 5 categories
     this.doc.addPage();
     this.currentPage = 2;
     this.addPage2();
     
-    // Page 3: Partner Alignment (if we have partner data)
     if (this.isCouple && this.dataS) {
       this.doc.addPage();
       this.currentPage = 3;
       this.addPage3Alignment();
     }
     
-    // Final Page: Selection gallery
     this.doc.addPage();
     this.currentPage = this.totalPages;
     this.addPageGallery();
@@ -442,26 +330,14 @@ export class TasteReportGenerator {
     return this.doc;
   }
   
-  /**
-   * Add page footer
-   */
   private addPageFooter(isLastPage: boolean = false): void {
     const footerY = this.pageHeight - 30;
     
-    // Date (left)
     this.doc.setFontSize(7);
     this.doc.setTextColor(113, 128, 150);
     this.doc.text(formatDate(new Date()), this.margin, footerY);
+    this.doc.text(`Page ${this.currentPage} of ${this.totalPages}`, this.pageWidth - this.margin, footerY, { align: 'right' });
     
-    // Page number (right)
-    this.doc.text(
-      `Page ${this.currentPage} of ${this.totalPages}`,
-      this.pageWidth - this.margin,
-      footerY,
-      { align: 'right' }
-    );
-    
-    // Disclaimer and copyright (only on last page)
     if (isLastPage) {
       this.doc.setFontSize(7);
       this.doc.setTextColor(113, 128, 150);
@@ -471,13 +347,9 @@ export class TasteReportGenerator {
     }
   }
   
-  /**
-   * Page 1: Header, style label, DNA axes, preferences, first 4 categories
-   */
   private addPage1(): void {
     let y = this.margin;
     
-    // Header
     this.doc.setFontSize(14);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
@@ -486,7 +358,6 @@ export class TasteReportGenerator {
     this.doc.setFontSize(20);
     this.doc.text('Your Design Profile', this.pageWidth / 2, y + 12, { align: 'center' });
     
-    // Client info (stacked)
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(113, 128, 150);
@@ -498,15 +369,14 @@ export class TasteReportGenerator {
     
     y += 40;
     
-    // Style label box
     const boxWidth = this.pageWidth - 2 * this.margin;
     const boxHeight = 50;
-    this.doc.setFillColor(245, 240, 225); // Light gold
+    this.doc.setFillColor(245, 240, 225);
     this.doc.roundedRect(this.margin, y, boxWidth, boxHeight, 4, 4, 'F');
     
     this.doc.setFontSize(18);
     this.doc.setFont('helvetica', 'bold');
-    this.doc.setTextColor(201, 162, 39); // Gold
+    this.doc.setTextColor(201, 162, 39);
     this.doc.text(this.dataP.metrics.styleLabel, this.pageWidth / 2, y + 25, { align: 'center' });
     
     this.doc.setFontSize(9);
@@ -516,14 +386,12 @@ export class TasteReportGenerator {
     
     y += boxHeight + 20;
     
-    // Design DNA section
     this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
     this.doc.text('Design DNA: Style Axes', this.margin, y);
     y += 20;
     
-    // Style Era slider
     this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(45, 55, 72);
@@ -531,53 +399,37 @@ export class TasteReportGenerator {
     drawSlider(this.doc, this.margin + 150, y - 5, 200, this.dataP.metrics.ctScale5, 5, 'Contemporary', 'Traditional');
     y += 25;
     
-    // Material Complexity slider
     this.doc.text(`Material Complexity — ${this.dataP.metrics.mlScale5.toFixed(1)}`, this.margin, y);
     drawSlider(this.doc, this.margin + 150, y - 5, 200, this.dataP.metrics.mlScale5, 5, 'Minimal', 'Layered');
     y += 25;
     
-    // Mood Palette slider
     this.doc.text(`Mood Palette — ${this.dataP.metrics.wcScale5.toFixed(1)}`, this.margin, y);
     drawSlider(this.doc, this.margin + 150, y - 5, 200, this.dataP.metrics.wcScale5, 5, 'Warm', 'Cool');
     y += 30;
     
-    // Style Preferences
     this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
     this.doc.text('Style Preferences', this.margin, y);
     y += 15;
     
-    // Regional influences (left column)
     this.doc.setFontSize(9);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text('Regional Influences', this.margin, y);
     
-    const regional = Object.entries(this.dataP.metrics.regionPreferences)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-    
+    const regional = Object.entries(this.dataP.metrics.regionPreferences).sort((a, b) => b[1] - a[1]).slice(0, 3);
     this.doc.setFont('helvetica', 'normal');
-    regional.forEach((r, i) => {
-      this.doc.text(`• ${r[0]}`, this.margin, y + 12 + i * 10);
-    });
+    regional.forEach((r, i) => { this.doc.text(`• ${r[0]}`, this.margin, y + 12 + i * 10); });
     
-    // Material preferences (right column)
     this.doc.setFont('helvetica', 'bold');
     this.doc.text('Material Preferences', this.pageWidth / 2, y);
     
-    const materials = Object.entries(this.dataP.metrics.materialPreferences)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-    
+    const materials = Object.entries(this.dataP.metrics.materialPreferences).sort((a, b) => b[1] - a[1]).slice(0, 3);
     this.doc.setFont('helvetica', 'normal');
-    materials.forEach((m, i) => {
-      this.doc.text(`• ${m[0]}`, this.pageWidth / 2, y + 12 + i * 10);
-    });
+    materials.forEach((m, i) => { this.doc.text(`• ${m[0]}`, this.pageWidth / 2, y + 12 + i * 10); });
     
     y += 50;
     
-    // Per-Category Design Profile (first 4)
     this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
@@ -585,16 +437,11 @@ export class TasteReportGenerator {
     y += 25;
     
     const categories = Object.keys(CATEGORY_INFO);
-    const firstFour = categories.slice(0, 4);
-    
-    this.drawCategoryCards(firstFour, y, 2);
+    this.drawCategoryCards(categories.slice(0, 4), y, 2);
     
     this.addPageFooter();
   }
   
-  /**
-   * Page 2: Remaining 5 categories
-   */
   private addPage2(): void {
     let y = this.margin;
     
@@ -611,11 +458,8 @@ export class TasteReportGenerator {
     y += 35;
     
     const categories = Object.keys(CATEGORY_INFO);
-    const remaining = categories.slice(4);
+    this.drawCategoryCards(categories.slice(4), y, 2);
     
-    this.drawCategoryCards(remaining, y, 2);
-    
-    // If partner is pending, add note at bottom of this page
     if (this.isCouple && this.partnerPending && this.partnerClientId) {
       const noteY = this.pageHeight - 80;
       this.doc.setFillColor(245, 240, 225);
@@ -628,19 +472,12 @@ export class TasteReportGenerator {
       
       this.doc.setFont('helvetica', 'normal');
       this.doc.setTextColor(113, 128, 150);
-      this.doc.text(
-        `Will be available once ${this.partnerClientId} completes their Taste Exploration.`,
-        this.margin + 10,
-        noteY + 28
-      );
+      this.doc.text(`Will be available once ${this.partnerClientId} completes their Taste Exploration.`, this.margin + 10, noteY + 28);
     }
     
     this.addPageFooter();
   }
   
-  /**
-   * Draw category cards in a grid
-   */
   private drawCategoryCards(categoryIds: string[], startY: number, cols: number): void {
     const cardWidth = 220;
     const cardHeight = 95;
@@ -659,28 +496,24 @@ export class TasteReportGenerator {
       const progress = this.dataP.session.progress[catId];
       const catMetrics = progress ? getCategoryMetrics(progress.selections) : { ct: 2.5, ml: 2.5, mp: 2.5 };
       
-      // Card background with border
       this.doc.setFillColor(255, 255, 255);
       this.doc.setDrawColor(226, 232, 240);
       this.doc.roundedRect(x, y, cardWidth, cardHeight, 4, 4, 'FD');
       
-      // Category header
       this.doc.setFillColor(30, 58, 95);
       this.doc.roundedRect(x, y, cardWidth, 18, 4, 4, 'F');
-      this.doc.rect(x, y + 10, cardWidth, 8, 'F'); // Square off bottom corners
+      this.doc.rect(x, y + 10, cardWidth, 8, 'F');
       
       this.doc.setFontSize(7);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(255, 255, 255);
       this.doc.text(catInfo.name, x + cardWidth / 2, y + 12, { align: 'center' });
       
-      // Design DNA label
       this.doc.setFontSize(6);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(30, 58, 95);
       this.doc.text('Design DNA', x + cardWidth / 2, y + 28, { align: 'center' });
       
-      // Mini sliders
       const sliderX = x + 10;
       const sliderWidth = 150;
       let sliderY = y + 38;
@@ -751,9 +584,6 @@ export class TasteReportGenerator {
     });
   }
   
-  /**
-   * Page 3: Partner Alignment Analysis
-   */
   private addPage3Alignment(): void {
     if (!this.dataS) return;
     
@@ -765,7 +595,6 @@ export class TasteReportGenerator {
     this.doc.text('Partner Alignment Analysis', this.margin, y);
     y += 25;
     
-    // Calculate alignment percentage
     const ctDiff = Math.abs(this.dataP.metrics.ctScale5 - this.dataS.metrics.ctScale5);
     const mlDiff = Math.abs(this.dataP.metrics.mlScale5 - this.dataS.metrics.mlScale5);
     const mpDiff = Math.abs(this.dataP.metrics.wcScale5 - this.dataS.metrics.wcScale5);
@@ -781,7 +610,6 @@ export class TasteReportGenerator {
     this.doc.text(`${alignmentPct}%`, this.margin + textWidth, y);
     y += 35;
     
-    // DNA Axis Comparison
     this.doc.setFontSize(14);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
@@ -794,12 +622,10 @@ export class TasteReportGenerator {
     this.doc.text('P = Principal (gold)   S = Secondary (navy)', this.margin, y);
     y += 30;
     
-    // Comparison sliders - adjusted positions
     const labelX = this.margin;
-    const sliderStartX = this.margin + 140; // More space for labels
+    const sliderStartX = this.margin + 140;
     const sliderWidth = 200;
     
-    // Style Era - consistent font size
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(45, 55, 72);
@@ -807,7 +633,6 @@ export class TasteReportGenerator {
     drawComparisonSlider(this.doc, sliderStartX, y - 5, sliderWidth, this.dataP.metrics.ctScale5, this.dataS.metrics.ctScale5, 5, 'Contemporary', 'Traditional');
     y += 40;
     
-    // Material Complexity - same font size
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(45, 55, 72);
@@ -815,7 +640,6 @@ export class TasteReportGenerator {
     drawComparisonSlider(this.doc, sliderStartX, y - 5, sliderWidth, this.dataP.metrics.mlScale5, this.dataS.metrics.mlScale5, 5, 'Minimal', 'Layered');
     y += 40;
     
-    // Mood Palette - same font size
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(45, 55, 72);
@@ -823,7 +647,6 @@ export class TasteReportGenerator {
     drawComparisonSlider(this.doc, sliderStartX, y - 5, sliderWidth, this.dataP.metrics.wcScale5, this.dataS.metrics.wcScale5, 5, 'Warm', 'Cool');
     y += 50;
     
-    // Flagged Divergences
     this.doc.setFontSize(14);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
@@ -836,7 +659,6 @@ export class TasteReportGenerator {
     this.doc.text('Categories where preferences differ significantly (more than one style position apart):', this.margin, y);
     y += 20;
     
-    // Find flagged divergences
     const flagged: { catName: string; styleP: string; codeP: string; styleS: string; codeS: string; gap: number }[] = [];
     
     for (const [catId, catInfo] of Object.entries(CATEGORY_INFO)) {
@@ -849,14 +671,7 @@ export class TasteReportGenerator {
         const gap = calculateDivergence(styleP.code, styleS.code);
         
         if (gap > 2) {
-          flagged.push({
-            catName: catInfo.name,
-            styleP: styleP.label,
-            codeP: styleP.code,
-            styleS: styleS.label,
-            codeS: styleS.code,
-            gap
-          });
+          flagged.push({ catName: catInfo.name, styleP: styleP.label, codeP: styleP.code, styleS: styleS.label, codeS: styleS.code, gap });
         }
       }
     }
@@ -879,14 +694,13 @@ export class TasteReportGenerator {
           ? `Significant divergence (${f.gap} positions apart). This warrants detailed discussion about design direction for this space.`
           : `Notable difference (${f.gap} positions apart). Consider discussing preferences to find common ground.`;
         
-        this.doc.setTextColor(197, 48, 48); // Flag red
+        this.doc.setTextColor(197, 48, 48);
         this.doc.text(`💬 ${prompt}`, this.margin + 10, y, { maxWidth: this.pageWidth - 2 * this.margin - 20 });
         y += 20;
       });
     } else {
       this.doc.setFontSize(10);
-      this.doc.setTextColor(56, 161, 105); // Success green
-      // Split into two lines to prevent overflow
+      this.doc.setTextColor(56, 161, 105);
       this.doc.text('✓ No significant divergences detected.', this.margin, y);
       y += 14;
       this.doc.text('Your style preferences are well-aligned across all categories.', this.margin + 12, y);
@@ -895,13 +709,9 @@ export class TasteReportGenerator {
     this.addPageFooter();
   }
   
-  /**
-   * Final Page: Selection Gallery
-   */
   private addPageGallery(): void {
     let y = this.margin + 20;
     
-    // Title
     this.doc.setFontSize(14);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(30, 58, 95);
@@ -914,7 +724,6 @@ export class TasteReportGenerator {
     this.doc.text('The images you selected during Taste Exploration', this.pageWidth / 2, y, { align: 'center' });
     y += 35;
     
-    // Grid of selection cards (3x3)
     const cardWidth = 140;
     const cardHeight = 120;
     const gapX = 25;
@@ -931,29 +740,14 @@ export class TasteReportGenerator {
       const x = startX + col * (cardWidth + gapX);
       const cardY = y + row * (cardHeight + gapY);
       
-      const progress = this.dataP.session.progress[catId];
-      let filename: string | null = null;
-      
-      if (progress) {
-        for (const sel of progress.selections) {
-          if (sel.selectedIndex >= 0) {
-            filename = getSelectionFilename(sel.quadId, sel.selectedIndex);
-            break;
-          }
-        }
-      }
-      
-      // Image placeholder box
       this.doc.setFillColor(241, 245, 249);
       this.doc.setDrawColor(226, 232, 240);
       this.doc.roundedRect(x + 5, cardY, cardWidth - 10, 85, 4, 4, 'FD');
       
-      // Placeholder icon
       this.doc.setFontSize(24);
       this.doc.setTextColor(203, 213, 224);
       this.doc.text('🖼️', x + cardWidth / 2 - 10, cardY + 50);
       
-      // Category label
       this.doc.setFontSize(8);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(30, 58, 95);
@@ -963,33 +757,21 @@ export class TasteReportGenerator {
     this.addPageFooter(true);
   }
   
-  /**
-   * Download the PDF
-   */
   download(filename?: string): void {
     const name = filename || `N4S-Taste-Profile-${this.dataP.clientId}.pdf`;
     this.doc.save(name);
   }
   
-  /**
-   * Open PDF in new tab
-   */
   openInNewTab(): void {
     const blob = this.doc.output('blob');
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
   }
   
-  /**
-   * Get PDF as blob for email attachment
-   */
   getBlob(): Blob {
     return this.doc.output('blob');
   }
   
-  /**
-   * Get PDF as base64 string
-   */
   getBase64(): string {
     return this.doc.output('datauristring');
   }
@@ -999,37 +781,19 @@ export class TasteReportGenerator {
 // CONVENIENCE FUNCTIONS
 // ============================================
 
-/**
- * Generate and download a taste profile report
- */
-export async function downloadTasteReport(
-  dataP: ReportData,
-  dataS?: ReportData
-): Promise<void> {
+export async function downloadTasteReport(dataP: ReportData, dataS?: ReportData): Promise<void> {
   const generator = new TasteReportGenerator(dataP, dataS || null);
   await generator.generate();
   generator.download();
 }
 
-/**
- * Generate and open report in new tab
- */
-export async function viewTasteReport(
-  dataP: ReportData,
-  dataS?: ReportData
-): Promise<void> {
+export async function viewTasteReport(dataP: ReportData, dataS?: ReportData): Promise<void> {
   const generator = new TasteReportGenerator(dataP, dataS || null);
   await generator.generate();
   generator.openInNewTab();
 }
 
-/**
- * Generate report and return blob for email
- */
-export async function getTasteReportBlob(
-  dataP: ReportData,
-  dataS?: ReportData
-): Promise<Blob> {
+export async function getTasteReportBlob(dataP: ReportData, dataS?: ReportData): Promise<Blob> {
   const generator = new TasteReportGenerator(dataP, dataS || null);
   await generator.generate();
   return generator.getBlob();
